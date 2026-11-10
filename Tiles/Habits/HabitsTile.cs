@@ -77,7 +77,35 @@ public sealed class HabitsView : UserControl
             var delete = TileUi.IconButton("", $"Delete {habit.Name}", 20);
             delete.FontSize = 8;
             delete.Opacity = 0;
-            delete.Click += (_, _) => { _habits.Remove(habit); Commit(); };
+            // Two clicks: a habit can hold a year of ticks, so a stray click mustn't wipe it.
+            bool armed = false;
+            var disarm = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            disarm.Tick += (_, _) =>
+            {
+                disarm.Stop();
+                armed = false;
+                delete.Content = "";
+                delete.Width = 20;
+                delete.FontSize = 8;
+                delete.ClearValue(Control.ForegroundProperty);
+                delete.ClearValue(Control.FontFamilyProperty);
+                delete.ToolTip = $"Delete {habit.Name}";
+                System.Windows.Automation.AutomationProperties.SetName(delete, $"Delete {habit.Name}");
+            };
+            delete.Click += (_, _) =>
+            {
+                if (armed) { disarm.Stop(); _habits.Remove(habit); Commit(); return; }
+                armed = true;
+                delete.Content = "Delete?";
+                delete.Width = double.NaN;
+                delete.FontSize = 11;
+                delete.FontFamily = SystemFonts.MessageFontFamily;
+                delete.SetResourceReference(Control.ForegroundProperty, "Danger");
+                delete.ToolTip = "Click again to delete this habit and its history";
+                System.Windows.Automation.AutomationProperties.SetName(delete, $"Confirm delete {habit.Name}");
+                disarm.Start();
+            };
+            delete.Unloaded += (_, _) => disarm.Stop();
             DockPanel.SetDock(delete, Dock.Right);
             int streak = HabitsContent.Streak(habit, Today);
             var streakText = TileUi.Text(streak > 0 ? $"{streak}d" : "", 11, "Accent2Brush", semibold: true);
@@ -114,7 +142,7 @@ public sealed class HabitsView : UserControl
             }
             row.Children.Add(dots);
 
-            void UpdateDelete() => delete.Opacity = row.IsMouseOver || row.IsKeyboardFocusWithin ? 1 : 0;
+            void UpdateDelete() => delete.Opacity = armed || row.IsMouseOver || row.IsKeyboardFocusWithin ? 1 : 0;
             row.MouseEnter += (_, _) => UpdateDelete();
             row.MouseLeave += (_, _) => UpdateDelete();
             row.IsKeyboardFocusWithinChanged += (_, _) => UpdateDelete();

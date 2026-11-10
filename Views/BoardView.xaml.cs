@@ -39,6 +39,9 @@ public partial class BoardView : UserControl
 
     private void Render()
     {
+        // Old tile views only get Unloaded after the new ones are built (and have read their content),
+        // so have any open editors save first. This also covers switching pages (a new board is built).
+        App.CommitOpenEdits();
         Board.Children.Clear();
         foreach (var tile in _page.Tiles)
             Board.Children.Add(CreateFrame(tile));

@@ -33,11 +33,14 @@ public class DataStore(string path)
     /// <summary>True when the last Load brought an older file up to the current version (the caller should save it).</summary>
     public bool Upgraded { get; private set; }
 
+    private int? _upgradedFrom;
+
     public HubData Load()
     {
         ReadFailed = false;
         RecoveredBackupPath = null;
         Upgraded = false;
+        _upgradedFrom = null;
         if (!File.Exists(path)) return HubData.CreateDefault();
 
         string json;
@@ -91,6 +94,7 @@ public class DataStore(string path)
 
         foreach (var page in data.Pages) BoardGrid.Normalize(page.Tiles);
         Upgraded = data.Version < HubData.CurrentVersion;
+        _upgradedFrom = Upgraded ? data.Version : null;
         data.Upgrade();
         return data;
     }
@@ -100,6 +104,13 @@ public class DataStore(string path)
     {
         if (ReadFailed) return false;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        if (_upgradedFrom is int oldVersion && File.Exists(path))
+        {
+            // Upgrades are one-way: keep the old file once, before it is first overwritten.
+            var backup = Path.Combine(Path.GetDirectoryName(path)!, $"data.v{oldVersion}.json");
+            if (!File.Exists(backup)) File.Copy(path, backup);
+            _upgradedFrom = null;
+        }
         var tmp = path + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(data, Json));
         File.Move(tmp, path, overwrite: true);

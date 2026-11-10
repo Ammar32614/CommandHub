@@ -44,7 +44,13 @@ public partial class App : Application
 
         Store = new DataStore(customData ?? DataStore.DefaultPath);
         Data = Store.Load();
-        if (Store.Upgraded) Store.Save(Data); // write the new layout once, so it isn't rebuilt on every launch
+        // Write the new layout once, so it isn't rebuilt on every launch. Errors are left for the next save
+        // (a locked file must not crash the launch that upgrades the user).
+        if (Store.Upgraded)
+        {
+            try { Store.Save(Data); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
         ApplyTheme(Data.Settings.Theme);
 
         MainWindow = new MainWindow();
@@ -79,10 +85,13 @@ public partial class App : Application
     /// </summary>
     public static event Action? CommittingEdits;
 
+    /// <summary>Asks every open tile editor to write its half-finished edits into tile content now.</summary>
+    public static void CommitOpenEdits() => CommittingEdits?.Invoke();
+
     /// <summary>Writes anything still waiting to be saved.</summary>
     public static void FlushSaves()
     {
-        CommittingEdits?.Invoke();
+        CommitOpenEdits();
         _saveSoon?.Flush();
     }
 

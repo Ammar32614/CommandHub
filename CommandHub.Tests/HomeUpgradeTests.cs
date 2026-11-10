@@ -123,3 +123,31 @@ public class UpgradeFlagTests : IDisposable
         Assert.False(store.Upgraded);
     }
 }
+
+public class UpgradeBackupTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "hub-bak-" + Guid.NewGuid().ToString("N"));
+    private string PathIn => Path.Combine(_dir, "data.json");
+    public void Dispose() { if (Directory.Exists(_dir)) Directory.Delete(_dir, true); }
+
+    [Fact]
+    public void FirstSaveAfterUpgrade_KeepsACopyOfTheOldFile()
+    {
+        Directory.CreateDirectory(_dir);
+        const string v1 = """{"version":1,"pages":[{"name":"Home","tiles":[]}]}""";
+        File.WriteAllText(PathIn, v1);
+        var store = new CommandHub.Services.DataStore(PathIn);
+        store.Save(store.Load());
+        Assert.Equal(v1, File.ReadAllText(Path.Combine(_dir, "data.v1.json")));
+        Assert.Contains("\"version\": 2", File.ReadAllText(PathIn));
+    }
+
+    [Fact]
+    public void NormalSave_MakesNoBackup()
+    {
+        var store = new CommandHub.Services.DataStore(PathIn);
+        store.Save(HubData.CreateDefault());
+        store.Save(store.Load());
+        Assert.Empty(Directory.GetFiles(_dir, "data.v*.json"));
+    }
+}

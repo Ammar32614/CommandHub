@@ -61,6 +61,10 @@ public sealed class WeatherView : UserControl
         {
             double lat = (double)C["lat"]!, lon = (double)C["lon"]!;
             var result = await WeatherApi.FetchAsync(lat, lon);
+            // The city may have changed while this was loading: never store one place's forecast under another.
+            bool samePlace = C["lat"] is JsonValue la && la.TryGetValue<double>(out var nowLat) && nowLat == lat
+                          && C["lon"] is JsonValue lo && lo.TryGetValue<double>(out var nowLon) && nowLon == lon;
+            if (!samePlace) return;
             if (result is { } r)
             {
                 C["report"] = r.Json;
@@ -193,7 +197,7 @@ public sealed class WeatherView : UserControl
         stack.Children.Add(hint);
         stack.Children.Add(line);
         stack.Children.Add(error);
-        box.ToolTip = "Uses Open-Meteo. Only the city you type is sent.";
+        box.ToolTip = "Sends the city you type, then that place's location every 30 minutes, to Open-Meteo (free, no account).";
 
         async Task Submit()
         {

@@ -8,7 +8,7 @@ It's a sibling to [Stint](../Timer%20app). It has the same look and the same the
 
 - **Home board** with eleven tiles, each with its own accent colour:
   - **Greeting** says good morning, afternoon or evening, with a new line each day.
-  - **Weather** shows now and the next three days for a city you type. It uses [Open-Meteo](https://open-meteo.com), which is free and needs no account. Only the city name and its coordinates are sent. It refreshes every 30 minutes and keeps the last report for when you're offline.
+  - **Weather** shows now and the next three days for a city you type. It uses [Open-Meteo](https://open-meteo.com), which is free and needs no account. It sends the city you type once, then that place's coordinates on each refresh. Like any website, Open-Meteo also sees your IP address. It refreshes every 30 minutes and keeps the last report for when you're offline.
   - **Time progress** has rings for how much of the day, week, month and year has gone.
   - **Clock and date**
   - **Study today** reads [Stint](../Timer%20app)'s log to show today's study time against your goal, your streak and the last 7 days. It only reads the log and never changes it.
