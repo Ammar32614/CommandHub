@@ -97,11 +97,25 @@ public partial class App : Application
 
     private static bool _warnedReadOnly;
 
+    /// <summary>Raised after every save attempt, so views that summarise other tiles (the Home header) can refresh.</summary>
+    public static event Action? Saved;
+
+    /// <summary>True once a save has been refused or has failed this session.</summary>
+    public static bool SaveTrouble { get; private set; }
+
     public static void SaveNow()
+    {
+        try { SaveNowCore(); }
+        finally { Saved?.Invoke(); }
+    }
+
+    private static void SaveNowCore()
     {
         try
         {
-            if (!Store.Save(Data) && !_warnedReadOnly)
+            bool saved = Store.Save(Data);
+            SaveTrouble = !saved;
+            if (!saved && !_warnedReadOnly)
             {
                 _warnedReadOnly = true;
                 (Current.MainWindow as MainWindow)?.ShowNotice(
@@ -110,6 +124,7 @@ public partial class App : Application
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            SaveTrouble = true;
             (Current.MainWindow as MainWindow)?.ShowNotice("Couldn't save your changes. " + ex.Message);
         }
     }

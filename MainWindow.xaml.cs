@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using CommandHub.Models;
 using CommandHub.Services;
+using CommandHub.Home;
 using CommandHub.Views;
 using Page = CommandHub.Models.Page;
 
@@ -40,16 +41,77 @@ public partial class MainWindow : Window
     private static StackPanel NavContent(string icon, string name)
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        sp.Children.Add(new TextBlock { Text = icon, FontFamily = (System.Windows.Media.FontFamily)Application.Current.FindResource("IconFont"), FontSize = 14, Width = 20, VerticalAlignment = VerticalAlignment.Center });
-        sp.Children.Add(new TextBlock { Text = name, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        var glyph = new TextBlock { Text = icon, FontFamily = (System.Windows.Media.FontFamily)Application.Current.FindResource("IconFont"), FontSize = 13, Width = 22, VerticalAlignment = VerticalAlignment.Center };
+        glyph.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+        sp.Children.Add(glyph);
+        sp.Children.Add(new TextBlock { Text = name, FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
         return sp;
     }
 
-    public void ShowPage(Page page) => PageHost.Content = new BoardView(page);
+    /// <summary>The first page is Home: a welcome header with the tiles below it. Other pages are just their board.</summary>
+    public void ShowPage(Page page)
+    {
+        HideSheet();
+        PageHost.Content = page == App.Data.Pages.FirstOrDefault()
+            ? new HomeView(page)
+            : new BoardView(page) { Margin = new Thickness(0, 40, 0, 0) };
+    }
 
     public void ShowSettings() => SettingsNav.IsChecked = true;
 
-    private void Settings_Checked(object sender, RoutedEventArgs e) => PageHost.Content = new SettingsPage();
+    // ---------------- Sheet and toast ----------------
+
+    public void ShowSheet(UIElement content)
+    {
+        Sheet.Content = content;
+        Sheet.Visibility = Visibility.Visible;
+    }
+
+    public void HideSheet()
+    {
+        Sheet.Content = null;
+        Sheet.Visibility = Visibility.Collapsed;
+    }
+
+    private readonly System.Windows.Threading.DispatcherTimer _toastTimer = new();
+    private Action? _toastAction;
+
+    /// <summary>A message with one action button (e.g. "Tile removed · Undo") that hides itself after a while.</summary>
+    public void ShowToast(string text, string actionLabel, Action action, TimeSpan duration)
+    {
+        ToastText.Text = text;
+        ToastAction.Content = actionLabel;
+        System.Windows.Automation.AutomationProperties.SetName(ToastAction, actionLabel);
+        _toastAction = action;
+        Toast.Visibility = Visibility.Visible;
+        _toastTimer.Stop();
+        _toastTimer.Interval = duration;
+        _toastTimer.Tick -= ToastTimeout;
+        _toastTimer.Tick += ToastTimeout;
+        _toastTimer.Start();
+    }
+
+    public void HideToast()
+    {
+        _toastTimer.Stop();
+        _toastAction = null;
+        Toast.Visibility = Visibility.Collapsed;
+    }
+
+    private void ToastTimeout(object? sender, EventArgs e) => HideToast();
+
+    private void ToastAction_Click(object sender, RoutedEventArgs e)
+    {
+        var action = _toastAction;
+        HideToast();
+        action?.Invoke();
+    }
+
+    private void Settings_Checked(object sender, RoutedEventArgs e)
+    {
+        HideSheet();
+        PageHost.Content = new SettingsPage { Margin = new Thickness(0, 40, 0, 0) };
+    }
 
     // ---------------- Notice banner ----------------
 

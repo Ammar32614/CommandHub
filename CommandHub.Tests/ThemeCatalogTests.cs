@@ -6,7 +6,7 @@ public class ThemeCatalogTests
 {
     [Fact]
     public void Catalog_HasStintThemesInOrder() =>
-        Assert.Equal(new[] { "Midnight", "Daylight", "Paper", "Forest", "Ocean", "Dusk" }, ThemeCatalog.All.Select(t => t.Name));
+        Assert.Equal(new[] { "Midnight", "Daylight", "Paper", "Forest", "Ocean", "Dusk", "After Hours" }, ThemeCatalog.All.Select(t => t.Name));
 
     [Fact]
     public void Midnight_AccentMatchesStintFocus() =>
@@ -27,4 +27,17 @@ public class ThemeCatalogTests
     [Fact]
     public void Keys_HaveNoTimerSpecificNames() =>
         Assert.DoesNotContain(ThemeCatalog.Keys, k => k is "FocusColor" or "BreakColor" or "TimerColor" or "StopwatchColor");
+}
+
+public class AfterHoursThemeTests
+{
+    [Fact]
+    public void AfterHours_IsDarkWithLimeAccent()
+    {
+        var t = ThemeCatalog.Get("After Hours");
+        Assert.Equal("After Hours", t.Name);
+        Assert.False(t.IsLight);
+        Assert.Equal("#C7D68E", t["AccentColor"]);
+        Assert.Equal("#13191D", t["BgColor"]);
+    }
 }

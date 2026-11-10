@@ -40,6 +40,10 @@ public static class ThemeCatalog
             bg: "#19141F", surface: "#211A29", raised: "#2B2235", text: "#F1EAF5", muted: "#9B8EA7",
             hairline: "#33293E", strong: "#463A54", onAccent: "#19141F",
             focus: "#F6B26B", brk: "#82D9C0", timer: "#F48A68", stopwatch: "#C6AAFF"),
+        Make("After Hours", "Deep teal night with a soft lime glow", false,
+            bg: "#13191D", surface: "#11191C", raised: "#283238", text: "#F0F5F1", muted: "#AAB8B4",
+            hairline: "#263135", strong: "#3A474C", onAccent: "#13191D",
+            focus: "#C7D68E", brk: "#8FD1C0", timer: "#E9A27C", stopwatch: "#A8B6F2"),
     ];
 
     public static ThemeDef Get(string? name) =>

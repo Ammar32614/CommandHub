@@ -1,13 +1,13 @@
 <UserControl x:Class="CommandHub.Views.BoardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid>
+    <Grid x:Name="Layout">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <DockPanel Margin="28,10,28,14">
+        <DockPanel x:Name="Header" Margin="33,10,33,14">
             <Button x:Name="EditBtn" DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Click="Edit_Click"
                     AutomationProperties.Name="Edit layout">
                 <StackPanel Orientation="Horizontal">
@@ -19,22 +19,8 @@
             <TextBlock x:Name="PageTitleText" Style="{StaticResource PageTitle}" VerticalAlignment="Center"/>
         </DockPanel>
 
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Focusable="False">
-            <Canvas x:Name="Board" Margin="28,0,28,28" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+        <ScrollViewer x:Name="BoardScroll" Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <Canvas x:Name="Board" Margin="33,0,33,28" HorizontalAlignment="Left" VerticalAlignment="Top"/>
         </ScrollViewer>
-
-        <!-- Undo toast -->
-        <Border x:Name="Toast" Grid.Row="1" Visibility="Collapsed" VerticalAlignment="Bottom" HorizontalAlignment="Center"
-                Margin="0,0,0,24" Padding="16,8,8,8" CornerRadius="10" Background="{DynamicResource Raised}"
-                BorderBrush="{DynamicResource Strong}" BorderThickness="1">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock x:Name="ToastText" Text="Tile removed" VerticalAlignment="Center" FontSize="13"/>
-                <Button Style="{StaticResource GhostButton}" Content="Undo" Margin="14,0,0,0" Padding="12,5"
-                        Click="Undo_Click" AutomationProperties.Name="Undo"/>
-            </StackPanel>
-        </Border>
-
-        <!-- Sheets (tile picker) -->
-        <ContentControl x:Name="Overlay" Grid.RowSpan="2" Focusable="False" Visibility="Collapsed"/>
     </Grid>
 </UserControl>

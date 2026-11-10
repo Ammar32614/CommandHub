@@ -23,14 +23,45 @@ public partial class BoardView : UserControl
     /// <summary>Tiles that are their own headline and look better without a title row.</summary>
     private static readonly HashSet<string> NoTitle = ["clock", "greeting"];
 
-    public BoardView(Page page)
+    /// <param name="embedded">
+    /// True when the board sits inside a page that scrolls (Home): no scroll area of its own,
+    /// and a small "YOUR TILES" label instead of the page title.
+    /// </param>
+    public BoardView(Page page, bool embedded = false)
     {
         InitializeComponent();
         _page = page;
         PageTitleText.Text = page.Name;
-        _toastTimer.Tick += (_, _) => HideToast();
-        Unloaded += (_, _) => _toastTimer.Stop();
+        if (embedded)
+        {
+            // Sideways only; the page around it scrolls vertically, so pass the mouse wheel up to it.
+            BoardScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            BoardScroll.PreviewMouseWheel += (_, e) =>
+            {
+                e.Handled = true;
+                var up = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta) { RoutedEvent = MouseWheelEvent, Source = this };
+                (VisualTreeHelper.GetParent(this) as UIElement)?.RaiseEvent(up);
+            };
+            PageTitleText.Style = null;
+            PageTitleText.Text = "YOUR TILES";
+            PageTitleText.FontSize = 10;
+            PageTitleText.FontWeight = FontWeights.SemiBold;
+            PageTitleText.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+            Header.Margin = new Thickness(33, 52, 33, 14); // room for the window buttons when scrolled to the top
+        }
+        Unloaded += (_, _) => Main?.HideToast();
         Render();
+    }
+
+    private static MainWindow? Main => Application.Current.MainWindow as MainWindow;
+
+    /// <summary>Rebuilds every tile (after something outside the board changed their content).</summary>
+    public void Refresh() => Render();
+
+    /// <summary>Turns edit layout on (used by "Personalize this space").</summary>
+    public void StartEditing()
+    {
+        if (!_editing) Edit_Click(this, new RoutedEventArgs());
     }
 
     // ---------------- Rendering ----------------
@@ -149,16 +180,12 @@ public partial class BoardView : UserControl
             _page.Tiles.Add(new PlacedTile { TypeId = type.TypeId, Column = col, Row = row, Size = type.DefaultSize });
             App.SaveNow();
             Render();
+            TilesChanged?.Invoke();
         };
-        Overlay.Content = picker;
-        Overlay.Visibility = Visibility.Visible;
+        Main?.ShowSheet(picker);
     }
 
-    private void ClosePicker()
-    {
-        Overlay.Content = null;
-        Overlay.Visibility = Visibility.Collapsed;
-    }
+    private static void ClosePicker() => Main?.HideSheet();
 
     // ---------------- Resize ----------------
 
@@ -186,39 +213,29 @@ public partial class BoardView : UserControl
 
     // ---------------- Remove and undo ----------------
 
-    private (PlacedTile Tile, int Index)? _removed;
-    private readonly DispatcherTimer _toastTimer = new() { Interval = TimeSpan.FromSeconds(6) };
+    /// <summary>Raised after tiles are added, removed or restored, so a page around the board can refresh.</summary>
+    public event Action? TilesChanged;
 
     private void Remove(TileFrame frame)
     {
         int index = _page.Tiles.IndexOf(frame.Tile);
         if (index < 0) return;
+        var tile = frame.Tile;
         _page.Tiles.RemoveAt(index);
-        _removed = (frame.Tile, index);
         App.SaveNow();
         Render();
-        Toast.Visibility = Visibility.Visible;
-        _toastTimer.Stop();
-        _toastTimer.Start();
+        TilesChanged?.Invoke();
+        Main?.ShowToast("Tile removed", "Undo", () => Restore(tile, index), TimeSpan.FromSeconds(6));
     }
 
-    private void Undo_Click(object sender, RoutedEventArgs e)
+    private void Restore(PlacedTile tile, int index)
     {
-        if (_removed is not { } r) return;
-        var tile = r.Tile;
         if (!BoardGrid.Fits(_page.Tiles, tile.Column, tile.Row, tile.Size))
             (tile.Column, tile.Row) = BoardGrid.FindFreeSpot(_page.Tiles, tile.Size);
-        _page.Tiles.Insert(Math.Min(r.Index, _page.Tiles.Count), tile);
+        _page.Tiles.Insert(Math.Min(index, _page.Tiles.Count), tile);
         App.SaveNow();
-        HideToast();
         Render();
-    }
-
-    private void HideToast()
-    {
-        _toastTimer.Stop();
-        _removed = null;
-        Toast.Visibility = Visibility.Collapsed;
+        TilesChanged?.Invoke();
     }
 
     // ---------------- Drag ----------------

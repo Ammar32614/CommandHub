@@ -124,7 +124,7 @@ public sealed class HabitsView : UserControl
                 bool done = habit.Done.Contains(day);
                 var dot = new Border
                 {
-                    Width = 14, Height = 14, CornerRadius = new CornerRadius(7), Margin = new Thickness(0, 0, 6, 0),
+                    Width = 14, Height = 14, CornerRadius = new CornerRadius(7), Margin = new Thickness(0, 0, i == 0 ? 0 : 4, 0),
                     BorderThickness = new Thickness(i == 0 ? 2 : 1.5),
                 };
                 dot.SetResourceReference(Border.BorderBrushProperty, done || i == 0 ? "Accent2Brush" : "Strong");
