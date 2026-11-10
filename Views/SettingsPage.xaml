@@ -1,0 +1,23 @@
+<UserControl x:Class="CommandHub.Views.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,16,28,28" MaxWidth="640" HorizontalAlignment="Left">
+            <TextBlock Text="Settings" Style="{StaticResource PageTitle}"/>
+
+            <TextBlock Text="Theme" Style="{StaticResource SectionTitle}" Margin="0,22,0,10"/>
+            <UniformGrid x:Name="Themes" Columns="3" Margin="-4,0,-4,0"/>
+
+            <TextBlock Text="Startup" Style="{StaticResource SectionTitle}" Margin="0,24,0,10"/>
+            <Border Style="{StaticResource Card}">
+                <CheckBox x:Name="StartWithWindows" Style="{StaticResource Switch}" AutomationProperties.Name="Start with Windows"
+                          Checked="StartWithWindows_Changed" Unchecked="StartWithWindows_Changed">
+                    <StackPanel Margin="0,0,20,0">
+                        <TextBlock Text="Start with Windows"/>
+                        <TextBlock Text="Opens Command hub minimized when you sign in." Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </CheckBox>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
