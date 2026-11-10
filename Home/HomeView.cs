@@ -41,18 +41,31 @@ public sealed class HomeView : UserControl
         // ScrollChanged (not SizeChanged): the viewport size is only known after layout, and is 0 before it.
         _scroll.ScrollChanged += (_, e) =>
         {
-            if (e.ViewportHeightChange == 0 || _scroll.ViewportHeight <= 0) return;
-            _hero.MinHeight = Math.Max(560, _scroll.ViewportHeight); // MinHeight: grows instead of clipping in small windows
+            if (e.ViewportHeightChange != 0 && _scroll.ViewportHeight > 0)
+                _hero.MinHeight = Math.Max(560, _scroll.ViewportHeight); // MinHeight: grows instead of clipping in small windows
+            UpdateForScroll();
         };
+        _smooth = new SmoothScroll(_scroll);
 
         _hero.ContentChanged += _board.Refresh;
         _hero.ScrollToTilesRequested += ScrollToTiles;
         _hero.PersonalizeRequested += () => { ScrollToTiles(); _board.StartEditing(); };
 
+        // One floating button that always offers the other half of the page.
+        _jump = new Button
+        {
+            Cursor = System.Windows.Input.Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 16), Padding = new Thickness(16, 7, 16, 7),
+        };
+        _jump.SetResourceReference(StyleProperty, "ChipButton");
+        _jump.Click += (_, _) => { if (_inTiles) _smooth.ScrollTo(0); else ScrollToTiles(); };
+        UpdateJump();
+
         var layers = new Grid();
         layers.Children.Add(_base);
         layers.Children.Add(_glow);
         layers.Children.Add(_scroll);
+        layers.Children.Add(_jump);
         Content = layers;
 
         Loaded += (_, _) => { App.ThemeChanged += Paint; Paint(); };
@@ -60,10 +73,38 @@ public sealed class HomeView : UserControl
         Paint();
     }
 
+    private readonly SmoothScroll _smooth;
+    private readonly Button _jump;
+    private bool _inTiles;
+
     private void ScrollToTiles()
     {
         var top = _board.TranslatePoint(new Point(0, 0), (UIElement)_scroll.Content).Y;
-        _scroll.ScrollToVerticalOffset(top); // the tiles header has its own top gap, clear of the window buttons
+        _smooth.ScrollTo(top); // the tiles header has its own top gap, clear of the window buttons
+    }
+
+    /// <summary>Fade the header as it scrolls away, and flip the floating button between "down" and "up".</summary>
+    private void UpdateForScroll()
+    {
+        double header = _hero.ActualHeight;
+        _hero.Opacity = SmoothScroll.HeaderOpacity(_scroll.VerticalOffset, header);
+        bool inTiles = SmoothScroll.InTiles(_scroll.VerticalOffset, header);
+        if (inTiles == _inTiles) return;
+        _inTiles = inTiles;
+        UpdateJump();
+    }
+
+    private void UpdateJump()
+    {
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        var glyph = new TextBlock { Text = _inTiles ? "" : "", FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+        glyph.SetResourceReference(TextBlock.FontFamilyProperty, "IconFont");
+        glyph.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+        var label = new TextBlock { Text = _inTiles ? "Back to top" : "Your tiles", Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        content.Children.Add(glyph);
+        content.Children.Add(label);
+        _jump.Content = content;
+        System.Windows.Automation.AutomationProperties.SetName(_jump, label.Text);
     }
 
     private static Color ColorOf(string key) =>

@@ -152,9 +152,6 @@ public sealed class HeroView : UserControl
         status.Children.Add(Spaced(T(trouble ? "Changes aren't being saved" : "All systems ready", 10, "Muted"), 7));
         DockPanel.SetDock(status, Dock.Left);
         footer.Children.Add(status);
-        var tiles = TextButton("Your tiles", "\uE74B", () => ScrollToTilesRequested?.Invoke());
-        tiles.HorizontalAlignment = HorizontalAlignment.Center;
-        footer.Children.Add(tiles);
         WindowChrome.SetIsHitTestVisibleInChrome(footer, true);
         Grid.SetRow(footer, 2);
         root.Children.Add(footer);

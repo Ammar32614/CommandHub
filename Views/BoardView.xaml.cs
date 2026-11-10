@@ -50,6 +50,7 @@ public partial class BoardView : UserControl
             PageTitleText.FontWeight = FontWeights.SemiBold;
             PageTitleText.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
             Header.Margin = new Thickness(33, 52, 33, 14); // room for the window buttons when scrolled to the top
+            Board.Margin = new Thickness(33, 0, 33, 72);   // room below the last row for the floating "Back to top" button
         }
         Unloaded += (_, _) => Main?.HideToast();
         Render();
