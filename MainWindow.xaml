@@ -1,7 +1,7 @@
 <Window x:Class="CommandHub.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Command hub" Width="1180" Height="760" MinWidth="720" MinHeight="480"
+        Title="Command hub" Width="1280" Height="780" MinWidth="720" MinHeight="480"
         WindowStyle="None" ResizeMode="CanResize" Background="{DynamicResource Bg}"
         FontFamily="{StaticResource TextFont}" Foreground="{DynamicResource Text}"
         TextOptions.TextFormattingMode="Display" UseLayoutRounding="True"

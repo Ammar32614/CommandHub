@@ -32,4 +32,19 @@ public partial class TileFrame : UserControl
         get => EditLayer.Visibility == Visibility.Visible;
         set => EditLayer.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    public bool CanResize
+    {
+        get => ResizeBtn.Visibility == Visibility.Visible;
+        set => ResizeBtn.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Briefly turns the outline red: "that size doesn't fit here".</summary>
+    public void FlashBlocked()
+    {
+        EditLayer.SetResourceReference(Border.BorderBrushProperty, "Danger");
+        var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        t.Tick += (_, _) => { t.Stop(); EditLayer.SetResourceReference(Border.BorderBrushProperty, "Strong"); };
+        t.Start();
+    }
 }
