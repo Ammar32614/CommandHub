@@ -366,7 +366,7 @@ public sealed class PlannerPage : UserControl
         head.Children.Add(Label("COMING UP"));
         list.Children.Add(head);
 
-        var next = PlannerLogic.UpNext(items, Today, 21);
+        var next = PlannerLogic.UpNext(items, Today, 21, TimeOnly.FromDateTime(DateTime.Now));
         if (next.Count == 0)
         {
             var empty = T("Nothing coming up. Add a class, a deadline or an exam, and it shows here.", 12, "Muted", wrap: true);

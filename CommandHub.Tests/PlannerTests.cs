@@ -203,3 +203,26 @@ public class PlannerUpNextRepeatTests
         Assert.Equal(today.AddDays(6), Assert.Single(next).Date);
     }
 }
+
+public class PlannerUpNextNowTests
+{
+    static readonly DateOnly Today = new(2026, 11, 10);
+
+    [Fact]
+    public void UpNext_SkipsWhatAlreadyEndedToday_AndShowsNextWeeksClass()
+    {
+        var cls = new PlanItem { Title = "Lecture", Kind = PlanKind.Class, Date = Today, Start = new TimeOnly(9, 0), End = new TimeOnly(10, 30), Weekly = true };
+        var next = PlannerLogic.UpNext([cls], Today, 21, now: new TimeOnly(18, 0));
+        Assert.Equal(Today.AddDays(7), Assert.Single(next).Date);
+    }
+
+    [Fact]
+    public void UpNext_KeepsLaterToday_AndAllDayItems()
+    {
+        var later = new PlanItem { Title = "Evening exam", Kind = PlanKind.Exam, Date = Today, Start = new TimeOnly(19, 0) };
+        var allDay = new PlanItem { Title = "Due today", Kind = PlanKind.Deadline, Date = Today };
+        var started = new PlanItem { Title = "Ends later", Kind = PlanKind.Event, Date = Today, Start = new TimeOnly(17, 0), End = new TimeOnly(20, 0) };
+        var next = PlannerLogic.UpNext([later, allDay, started], Today, 21, now: new TimeOnly(18, 0));
+        Assert.Equal(3, next.Count);
+    }
+}

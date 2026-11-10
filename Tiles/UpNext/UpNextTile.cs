@@ -33,7 +33,7 @@ public sealed class UpNextView : UserControl
     private void Render()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
-        var next = PlannerLogic.UpNext(App.Data?.Planner ?? [], today, 21);
+        var next = PlannerLogic.UpNext(App.Data?.Planner ?? [], today, 21, TimeOnly.FromDateTime(DateTime.Now));
         var root = new Grid();
         var open = TileUi.EditButton("Open planner");
         open.Content = "";

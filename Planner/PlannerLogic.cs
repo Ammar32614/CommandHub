@@ -43,13 +43,15 @@ public static partial class PlannerLogic
         o.Item.Kind == PlanKind.Deadline && !o.Item.Done && o.Date < today;
 
     /// <summary>Overdue deadlines first, then everything not done in the next <paramref name="days"/> days.</summary>
-    public static List<PlanOccurrence> UpNext(IEnumerable<PlanItem> items, DateOnly today, int days)
+    /// <param name="now">Time of day; anything today that has already ended (End, or Start if no End) is skipped.</param>
+    public static List<PlanOccurrence> UpNext(IEnumerable<PlanItem> items, DateOnly today, int days, TimeOnly? now = null)
     {
         var all = items.ToList();
         var overdue = all.Where(i => !i.Weekly && i.Kind == PlanKind.Deadline && !i.Done && i.Date < today)
             .OrderBy(i => i.Date).Select(i => new PlanOccurrence(i, i.Date));
         // A weekly class shows once (its next lecture), not every week in the window.
         var upcoming = Occurrences(all.Where(i => !i.Done), today, today.AddDays(days))
+            .Where(o => !(now is { } t && o.Date == today && (o.Item.End ?? o.Item.Start) is { } ends && ends < t))
             .GroupBy(o => o.Item.Weekly ? o.Item.Id : Guid.NewGuid())
             .Select(g => g.First())
             .OrderBy(o => o.Date).ThenBy(o => o.Item.Start.HasValue).ThenBy(o => o.Item.Start ?? TimeOnly.MinValue);

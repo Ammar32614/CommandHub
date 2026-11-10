@@ -74,7 +74,8 @@ public sealed class PlanEditor : UserControl
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape) { e.Handled = true; Closed?.Invoke(false); }
-            else if (e.Key == Key.Enter && !_notes.IsKeyboardFocusWithin) { e.Handled = true; Save(); }
+            // Enter saves only from a single-line box; on a button (Cancel, Delete, a calendar day) it presses that button.
+            else if (e.Key == Key.Enter && e.OriginalSource is TextBox tb && tb != _notes) { e.Handled = true; Save(); }
         };
         Loaded += (_, _) => Dispatcher.BeginInvoke(() => { _title.Focus(); _title.SelectAll(); }, DispatcherPriority.Input);
     }
