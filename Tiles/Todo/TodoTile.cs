@@ -10,5 +10,6 @@ public sealed class TodoTile : ITileType
     public string Icon => "";
     public IReadOnlyList<TileSize> AllowedSizes { get; } = [TileSize.Small, TileSize.Wide, TileSize.Tall, TileSize.Large];
     public TileSize DefaultSize => TileSize.Tall;
+    public string AccentKey => "Accent2Brush";
     public FrameworkElement CreateView(TileContext ctx) => new TodoTileView(ctx);
 }

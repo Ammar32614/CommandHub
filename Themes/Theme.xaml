@@ -21,6 +21,9 @@
     <SolidColorBrush x:Key="Hairline" Color="{StaticResource HairlineColor}"/>
     <SolidColorBrush x:Key="OnAccent" Color="#14161C"/>
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+    <SolidColorBrush x:Key="Accent2Brush" Color="{StaticResource Accent2Color}"/>
+    <SolidColorBrush x:Key="Accent3Brush" Color="{StaticResource Accent3Color}"/>
+    <SolidColorBrush x:Key="Accent4Brush" Color="{StaticResource Accent4Color}"/>
     <SolidColorBrush x:Key="Danger" Color="#E5484D"/>
     <SolidColorBrush x:Key="Strong" Color="#3A4150"/>
     <SolidColorBrush x:Key="Scrim" Color="#B314161C"/>

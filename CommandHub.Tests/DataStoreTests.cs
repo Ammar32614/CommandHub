@@ -27,7 +27,7 @@ public class DataStoreTests : IDisposable
     {
         var d = new DataStore(PathIn).Load();
         Assert.Equal("Home", Assert.Single(d.Pages).Name);
-        Assert.Equal(4, d.Pages[0].Tiles.Count);
+        Assert.Equal(11, d.Pages[0].Tiles.Count);
     }
 
     [Fact]
@@ -37,19 +37,19 @@ public class DataStoreTests : IDisposable
         var d = HubData.CreateDefault();
         d.Pages[0].Tiles.Add(new PlacedTile
         {
-            Id = Guid.NewGuid(), TypeId = "weather", Column = 0, Row = 3, Size = TileSize.Small,
+            Id = Guid.NewGuid(), TypeId = "stocks", Column = 0, Row = 9, Size = TileSize.Small,
             Content = new JsonObject { ["city"] = "Lahore" },
         });
-        d.Pages[0].Tiles[1].Content["text"] = "hello";
+        d.Pages[0].Tiles.Single(x => x.TypeId == "note").Content["text"] = "hello";
         d.Settings.Theme = "Ocean";
 
         Assert.True(s.Save(d));
         var loaded = s.Load();
         var t = loaded.Pages[0].Tiles;
 
-        Assert.Equal("hello", (string?)t[1].Content["text"]);
-        Assert.Equal("Lahore", (string?)t.Single(x => x.TypeId == "weather").Content["city"]);
-        Assert.Equal(TileSize.Large, t[0].Size);
+        Assert.Equal("hello", (string?)t.Single(x => x.TypeId == "note").Content["text"]);
+        Assert.Equal("Lahore", (string?)t.Single(x => x.TypeId == "stocks").Content["city"]);
+        Assert.Equal(TileSize.Large, t.Single(x => x.TypeId == "clock").Size);
         Assert.Equal("Ocean", loaded.Settings.Theme);
     }
 
@@ -74,7 +74,7 @@ public class DataStoreTests : IDisposable
     [Fact]
     public void Load_NewerVersionWithUnknownEnum_RefusesToOverwriteAndIsNotCorrupt()
     {
-        var json = """{"version":2,"pages":[{"name":"Home","tiles":[{"typeId":"note","column":0,"row":0,"size":"Huge"}]}]}""";
+        var json = """{"version":3,"pages":[{"name":"Home","tiles":[{"typeId":"note","column":0,"row":0,"size":"Huge"}]}]}""";
         WriteRaw(json);
         var s = new DataStore(PathIn);
         s.Load();
@@ -125,7 +125,7 @@ public class DataStoreTests : IDisposable
     [Fact]
     public void Load_NullEntries_DoNotThrow()
     {
-        WriteRaw("""{"version":1,"pages":[null,{"name":null,"tiles":[null,{"typeId":"note","content":null}]}],"settings":null}""");
+        WriteRaw("""{"version":2,"pages":[null,{"name":null,"tiles":[null,{"typeId":"note","content":null}]}],"settings":null}""");
         var d = new DataStore(PathIn).Load();
         var tile = Assert.Single(Assert.Single(d.Pages).Tiles);
         Assert.NotNull(tile.Content);

@@ -10,5 +10,6 @@ public sealed class NoteTile : ITileType
     public string Icon => "";
     public IReadOnlyList<TileSize> AllowedSizes { get; } = [TileSize.Small, TileSize.Wide, TileSize.Tall, TileSize.Large];
     public TileSize DefaultSize => TileSize.Wide;
+    public string AccentKey => "Accent4Brush";
     public FrameworkElement CreateView(TileContext ctx) => new NoteTileView(ctx);
 }

@@ -9,12 +9,14 @@ public partial class TileFrame : UserControl
 {
     public PlacedTile Tile { get; }
 
-    public TileFrame(PlacedTile tile, string title, bool showTitle, FrameworkElement view)
+    public TileFrame(PlacedTile tile, string title, string icon, string accentKey, bool showTitle, FrameworkElement view)
     {
         InitializeComponent();
         Tile = tile;
         TitleText.Text = title;
-        TitleText.Visibility = showTitle ? Visibility.Visible : Visibility.Collapsed;
+        TitleIcon.Text = icon;
+        TitleIcon.SetResourceReference(TextBlock.ForegroundProperty, accentKey);
+        TitleRow.Visibility = showTitle ? Visibility.Visible : Visibility.Collapsed;
         Body.Content = view;
         System.Windows.Automation.AutomationProperties.SetName(this, title);
         ResizeBtn.Click += (_, _) => ResizeRequested?.Invoke(this);

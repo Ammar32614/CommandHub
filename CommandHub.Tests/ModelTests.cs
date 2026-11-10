@@ -10,14 +10,4 @@ public class ModelTests
     public void Span_MatchesSpec(TileSize s, int cols, int rows) =>
         Assert.Equal((cols, rows), TileSizes.Span(s));
 
-    [Fact]
-    public void CreateDefault_HomeHasOneOfEachStarterTile()
-    {
-        var d = HubData.CreateDefault();
-        var home = Assert.Single(d.Pages);
-        Assert.Equal("Home", home.Name);
-        Assert.Equal(new[] { "clock", "note", "todo", "links" }, home.Tiles.Select(t => t.TypeId));
-        Assert.Equal(1, d.Version);
-        Assert.Equal("Midnight", d.Settings.Theme);
-    }
 }

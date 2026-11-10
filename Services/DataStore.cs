@@ -30,10 +30,14 @@ public class DataStore(string path)
     /// </summary>
     public bool ReadFailed { get; private set; }
 
+    /// <summary>True when the last Load brought an older file up to the current version (the caller should save it).</summary>
+    public bool Upgraded { get; private set; }
+
     public HubData Load()
     {
         ReadFailed = false;
         RecoveredBackupPath = null;
+        Upgraded = false;
         if (!File.Exists(path)) return HubData.CreateDefault();
 
         string json;
@@ -86,6 +90,8 @@ public class DataStore(string path)
         }
 
         foreach (var page in data.Pages) BoardGrid.Normalize(page.Tiles);
+        Upgraded = data.Version < HubData.CurrentVersion;
+        data.Upgrade();
         return data;
     }
 

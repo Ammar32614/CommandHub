@@ -5,11 +5,11 @@ namespace CommandHub.Tests;
 public class TileRegistryTests
 {
     [Fact]
-    public void Registry_HasFourStarterTypes() =>
-        Assert.Equal(new[] { "clock", "note", "todo", "links" }, TileRegistry.All.Select(t => t.TypeId));
+    public void Registry_ListsEveryTileType() =>
+        Assert.Equal(new[] { "clock", "note", "todo", "links", "greeting", "weather", "progress", "focus", "system", "countdown", "habits" }, TileRegistry.All.Select(t => t.TypeId));
 
     [Fact]
-    public void Registry_UnknownType_IsNull() => Assert.Null(TileRegistry.Find("weather"));
+    public void Registry_UnknownType_IsNull() => Assert.Null(TileRegistry.Find("stocks"));
 
     [Fact]
     public void Registry_Find_ReturnsType() => Assert.Equal("note", TileRegistry.Find("note")?.TypeId);

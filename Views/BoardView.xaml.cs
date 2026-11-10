@@ -20,6 +20,9 @@ public partial class BoardView : UserControl
     private readonly Page _page;
     private bool _editing;
 
+    /// <summary>Tiles that are their own headline and look better without a title row.</summary>
+    private static readonly HashSet<string> NoTitle = ["clock", "greeting"];
+
     public BoardView(Page page)
     {
         InitializeComponent();
@@ -48,7 +51,8 @@ public partial class BoardView : UserControl
         var type = TileRegistry.Find(tile.TypeId);
         var ctx = new TileContext(tile, App.SaveNow, App.SaveSoon);
         var view = type?.CreateView(ctx) ?? new UnknownTileView();
-        var frame = new TileFrame(tile, type?.DisplayName ?? "Unknown tile", showTitle: type?.TypeId != "clock", view)
+        var frame = new TileFrame(tile, type?.DisplayName ?? "Unknown tile", type?.Icon ?? "",
+            type?.AccentKey ?? "Muted", showTitle: type is not null && !NoTitle.Contains(type.TypeId), view)
         {
             IsEditing = _editing,
             CanResize = type is not null && type.AllowedSizes.Count > 1,

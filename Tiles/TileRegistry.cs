@@ -14,6 +14,13 @@ public static class TileRegistry
         new NoteTile(),
         new TodoTile(),
         new LinksTile(),
+        new Greeting.GreetingTile(),
+        new Weather.WeatherTile(),
+        new Progress.ProgressTile(),
+        new Focus.FocusTile(),
+        new SystemPulse.SystemTile(),
+        new Countdown.CountdownTile(),
+        new Habits.HabitsTile(),
     ];
 
     /// <summary>Null for a type this version doesn't know (e.g. from a newer save file); the board shows a placeholder.</summary>

@@ -16,6 +16,8 @@ public interface ITileType
     string Icon { get; }
     IReadOnlyList<TileSize> AllowedSizes { get; }
     TileSize DefaultSize { get; }
+    /// <summary>Which theme accent colours this tile: AccentBrush, Accent2Brush, Accent3Brush or Accent4Brush.</summary>
+    string AccentKey => "AccentBrush";
     FrameworkElement CreateView(TileContext ctx);
 }
 

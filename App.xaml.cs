@@ -18,9 +18,14 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // One copy at a time, so two windows never fight over data.json. A second launch brings the first forward.
-        _instanceMutex = new Mutex(true, "CommandHub.SingleInstance", out bool first);
-        _activateSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "CommandHub.Activate");
+        // COMMANDHUB_DATA points the app at a different file (testing, demo data).
+        var customData = Environment.GetEnvironmentVariable("COMMANDHUB_DATA") is { Length: > 0 } p ? p : null;
+
+        // One copy per data file, so two windows never fight over the same data.json. A second launch brings the first forward.
+        // A copy using a different file (COMMANDHUB_DATA) is a separate instance.
+        var instance = customData is null ? "CommandHub" : "CommandHub." + StableHash(Path.GetFullPath(customData).ToUpperInvariant());
+        _instanceMutex = new Mutex(true, instance + ".SingleInstance", out bool first);
+        _activateSignal = new EventWaitHandle(false, EventResetMode.AutoReset, instance + ".Activate");
         if (!first)
         {
             _activateSignal.Set();
@@ -37,9 +42,9 @@ public partial class App : Application
         DispatcherUnhandledException += OnUnhandledException;
         SessionEnding += (_, _) => FlushSaves();
 
-        // COMMANDHUB_DATA points the app at a different file (testing, demo data).
-        Store = new DataStore(Environment.GetEnvironmentVariable("COMMANDHUB_DATA") is { Length: > 0 } p ? p : DataStore.DefaultPath);
+        Store = new DataStore(customData ?? DataStore.DefaultPath);
         Data = Store.Load();
+        if (Store.Upgraded) Store.Save(Data); // write the new layout once, so it isn't rebuilt on every launch
         ApplyTheme(Data.Settings.Theme);
 
         MainWindow = new MainWindow();
@@ -51,6 +56,10 @@ public partial class App : Application
         else if (Store.RecoveredBackupPath is { } backup)
             ((MainWindow)MainWindow).ShowNotice($"Your saved data was damaged, so Command hub started fresh. A copy was kept at {backup}");
     }
+
+    /// <summary>A short name-safe hash that is the same on every run (string.GetHashCode is not).</summary>
+    private static string StableHash(string s) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(s)))[..12];
 
     protected override void OnExit(ExitEventArgs e)
     {
@@ -126,6 +135,7 @@ public partial class App : Application
         ["BgColor"] = "Bg", ["SurfaceColor"] = "Surface", ["RaisedColor"] = "Raised", ["TextColor"] = "Text",
         ["MutedColor"] = "Muted", ["HairlineColor"] = "Hairline", ["StrongColor"] = "Strong",
         ["ScrimColor"] = "Scrim", ["OnAccentColor"] = "OnAccent", ["AccentColor"] = "AccentBrush",
+        ["Accent2Color"] = "Accent2Brush", ["Accent3Color"] = "Accent3Brush", ["Accent4Color"] = "Accent4Brush",
     };
 
     /// <summary>
