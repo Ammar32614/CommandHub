@@ -204,3 +204,29 @@ public class StudyHardeningTests
     [InlineData(150, 15)]
     public void LabelEvery_KeepsAboutTenLabels(int bars, int every) => Assert.Equal(every, StudyStats.LabelEvery(bars));
 }
+
+public class StudyWhitespaceAndCoursesTests
+{
+    [Fact]
+    public void Parse_CollapsesInnerSpaces_SoTasksMerge()
+    {
+        var log = StudyLog.Parse("""
+            {"subjects":[{"id":"b69cecda-3f38-4f50-b662-8a1492689c89","name":"ML","color":"#4FD1C5"}],
+             "sessions":[{"start":"2026-11-10T09:00:00+05:00","seconds":600,"subjectId":"b69cecda-3f38-4f50-b662-8a1492689c89","description":"Lecture  8"},
+                         {"start":"2026-11-10T10:00:00+05:00","seconds":600,"subjectId":"b69cecda-3f38-4f50-b662-8a1492689c89","description":"Lecture 8"},
+                         {"start":"2026-11-10T11:00:00+05:00","seconds":600,"subjectId":"b69cecda-3f38-4f50-b662-8a1492689c89","description":"line\nbreak"}]}
+            """, TimeZoneInfo.Utc)!;
+        var tasks = StudyStats.ByTask(log.Sessions);
+        Assert.Equal(2, tasks.Count);
+        Assert.Contains(tasks, t => t.Task == "Lecture 8" && t.Sessions == 2);
+        Assert.Contains(tasks, t => t.Task == "line break");
+    }
+
+    [Fact]
+    public void Parse_ListsCourses_WithColours()
+    {
+        var log = StudyLog.Parse("""{"subjects":[{"id":"00000000-0000-0000-0000-000000000001","name":"DIP","color":"#C8CDD8"},{"id":"b69cecda-3f38-4f50-b662-8a1492689c89","name":"ML","color":"#4FD1C5"}],"sessions":[]}""", TimeZoneInfo.Utc)!;
+        Assert.Equal(new[] { "DIP", "ML" }, log.Courses.Select(c => c.Name));
+        Assert.Equal("#4FD1C5", log.Courses[1].Color);
+    }
+}

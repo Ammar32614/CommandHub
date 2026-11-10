@@ -21,6 +21,7 @@ public static class TileRegistry
         new SystemPulse.SystemTile(),
         new Countdown.CountdownTile(),
         new Habits.HabitsTile(),
+        new UpNext.UpNextTile(),
     ];
 
     /// <summary>Null for a type this version doesn't know (e.g. from a newer save file); the board shows a placeholder.</summary>

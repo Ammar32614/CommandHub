@@ -271,7 +271,12 @@ public sealed class HeroView : UserControl
         cancel.SetResourceReference(FrameworkElement.StyleProperty, "GhostButton");
         cancel.Click += (_, _) => Cancel();
         target.KeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; Pin(); } };
-        name.KeyDown += (_, e) => { if (e.Key == Key.Escape) Cancel(); };
+        // Enter pins from either box; Escape cancels.
+        name.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter) { e.Handled = true; Pin(); }
+            else if (e.Key == Key.Escape) Cancel();
+        };
         target.KeyDown += (_, e) => { if (e.Key == Key.Escape) Cancel(); };
 
         var line = new StackPanel { Orientation = Orientation.Horizontal };

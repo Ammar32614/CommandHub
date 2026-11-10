@@ -48,6 +48,17 @@ public partial class MainWindow : Window
                 System.Windows.Automation.AutomationProperties.SetName(study, "Study");
                 study.Checked += (_, _) => ShowStudy();
                 PageNav.Children.Add(study);
+
+                _plannerNav = new RadioButton
+                {
+                    GroupName = "Nav",
+                    Style = (Style)FindResource("NavItem"),
+                    Content = NavContent("", "Planner"),
+                    Margin = new Thickness(0, 0, 0, 2),
+                };
+                System.Windows.Automation.AutomationProperties.SetName(_plannerNav, "Planner");
+                _plannerNav.Checked += (_, _) => OpenPlannerPage();
+                PageNav.Children.Add(_plannerNav);
             }
         }
         if (PageNav.Children.Count > 0) ((RadioButton)PageNav.Children[0]).IsChecked = true;
@@ -87,6 +98,23 @@ public partial class MainWindow : Window
     }
 
     private void RestartToUpdate_Click(object sender, RoutedEventArgs e) => App.Updater.ApplyAndRestart();
+
+    private RadioButton? _plannerNav;
+
+    /// <summary>Selects Planner in the sidebar (used by the "Up next" tile).</summary>
+    public void ShowPlanner()
+    {
+        if (_plannerNav is null) return;
+        if (_plannerNav.IsChecked == true) OpenPlannerPage();
+        else _plannerNav.IsChecked = true;
+    }
+
+    private void OpenPlannerPage()
+    {
+        HideSheet();
+        App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
+        PageHost.Content = new Planner.PlannerPage();
+    }
 
     private void ShowStudy()
     {

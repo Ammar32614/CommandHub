@@ -6,7 +6,7 @@ public class TileRegistryTests
 {
     [Fact]
     public void Registry_ListsEveryTileType() =>
-        Assert.Equal(new[] { "clock", "note", "todo", "links", "greeting", "weather", "progress", "focus", "system", "countdown", "habits" }, TileRegistry.All.Select(t => t.TypeId));
+        Assert.Equal(new[] { "clock", "note", "todo", "links", "greeting", "weather", "progress", "focus", "system", "countdown", "habits", "upnext" }, TileRegistry.All.Select(t => t.TypeId));
 
     [Fact]
     public void Registry_UnknownType_IsNull() => Assert.Null(TileRegistry.Find("stocks"));

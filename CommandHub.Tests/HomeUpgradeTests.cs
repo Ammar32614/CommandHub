@@ -14,17 +14,17 @@ public class HomeUpgradeTests : IDisposable
     }
 
     static readonly string[] NewHomeTypes =
-        ["greeting", "weather", "progress", "clock", "focus", "system", "todo", "habits", "note", "links", "countdown"];
+        ["greeting", "weather", "progress", "clock", "focus", "system", "todo", "habits", "note", "links", "countdown", "upnext"];
 
     [Fact]
-    public void CreateDefault_IsVersion2WithVibrantHome()
+    public void CreateDefault_IsVersion3WithVibrantHome()
     {
         var d = HubData.CreateDefault();
-        Assert.Equal(2, d.Version);
+        Assert.Equal(3, d.Version);
         var tiles = d.Pages[0].Tiles;
         Assert.Equal(NewHomeTypes.OrderBy(x => x), tiles.Select(t => t.TypeId).OrderBy(x => x));
         foreach (var t in tiles) Assert.True(BoardGrid.Fits(tiles, t.Column, t.Row, t.Size, t.Id), $"{t.TypeId} overlaps");
-        Assert.True(tiles.All(t => t.Row + TileSizes.Span(t.Size).Rows <= 4), "home should fit in 4 rows");
+        Assert.True(tiles.All(t => t.Row + TileSizes.Span(t.Size).Rows <= 5), "home should fit in 5 rows");
     }
 
     private static string V1(string tilesJson) => "{\"version\":1,\"pages\":[{\"name\":\"Home\",\"tiles\":[" + tilesJson + "]}]}";
@@ -44,7 +44,7 @@ public class HomeUpgradeTests : IDisposable
         var store = new DataStore(PathIn);
         var d = store.Load();
 
-        Assert.Equal(2, d.Version);
+        Assert.Equal(3, d.Version);
         Assert.False(store.ReadFailed);
         var tiles = d.Pages[0].Tiles;
         Assert.Equal(NewHomeTypes.OrderBy(x => x), tiles.Select(t => t.TypeId).OrderBy(x => x));
@@ -77,14 +77,14 @@ public class HomeUpgradeTests : IDisposable
     }
 
     [Fact]
-    public void Upgrade_IsSavedAsVersion2()
+    public void Upgrade_IsSavedAsCurrentVersion()
     {
         Directory.CreateDirectory(_dir);
         File.WriteAllText(PathIn, V1(UntouchedV1Tiles));
         var store = new DataStore(PathIn);
         store.Save(store.Load());
-        Assert.Contains("\"version\": 2", File.ReadAllText(PathIn));
-        Assert.Equal(11, new DataStore(PathIn).Load().Pages[0].Tiles.Count);
+        Assert.Contains("\"version\": 3", File.ReadAllText(PathIn));
+        Assert.Equal(12, new DataStore(PathIn).Load().Pages[0].Tiles.Count);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class UpgradeBackupTests : IDisposable
         var store = new CommandHub.Services.DataStore(PathIn);
         store.Save(store.Load());
         Assert.Equal(v1, File.ReadAllText(Path.Combine(_dir, "data.v1.json")));
-        Assert.Contains("\"version\": 2", File.ReadAllText(PathIn));
+        Assert.Contains("\"version\": 3", File.ReadAllText(PathIn));
     }
 
     [Fact]

@@ -21,7 +21,7 @@ public sealed class StudyPage : UserControl
     private readonly ScrollViewer _scroll;
     private readonly StackPanel _content = new() { Margin = new Thickness(33, 0, 33, 40) };
     private readonly DispatcherTimer _reload = new() { Interval = TimeSpan.FromMilliseconds(700) };
-    private FileSystemWatcher? _watcher;
+    private FileSystemWatcher? _watcher, _folderWatcher;
     private StudyLog? _log;
     private StudyRange _range = StudyRange.Week;
     private string? _course; // filter for "What you worked on"
@@ -50,6 +50,8 @@ public sealed class StudyPage : UserControl
             _reload.Stop();
             _watcher?.Dispose();
             _watcher = null;
+            _folderWatcher?.Dispose();
+            _folderWatcher = null;
         };
         Backdrop.Paint(_base, _glow);
     }
@@ -66,7 +68,27 @@ public sealed class StudyPage : UserControl
         try
         {
             var dir = System.IO.Path.GetDirectoryName(StudyLog.DefaultPath)!;
-            if (!Directory.Exists(dir)) return;
+            if (!Directory.Exists(dir))
+            {
+                // Stint isn't installed (or hasn't saved) yet: wait for its folder to appear, then watch inside it.
+                _folderWatcher?.Dispose();
+                _folderWatcher = new FileSystemWatcher(System.IO.Path.GetDirectoryName(dir)!, System.IO.Path.GetFileName(dir))
+                {
+                    NotifyFilter = NotifyFilters.DirectoryName,
+                };
+                _folderWatcher.Created += (_, _) => Dispatcher.BeginInvoke(() =>
+                {
+                    if (!IsLoaded || _watcher != null) return;
+                    _folderWatcher?.Dispose();
+                    _folderWatcher = null;
+                    Watch();
+                    _reload.Stop();
+                    _reload.Start();
+                });
+                _folderWatcher.EnableRaisingEvents = true;
+                return;
+            }
+            _watcher?.Dispose();
             _watcher = new FileSystemWatcher(dir, "data.json") { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size };
             FileSystemEventHandler changed = (_, _) => Dispatcher.BeginInvoke(() => { _reload.Stop(); _reload.Start(); });
             _watcher.Changed += changed;

@@ -11,9 +11,15 @@ public record StudySession(DateTime Start, int Seconds, string Subject, string C
 }
 
 /// <summary>Stint's study log, read-only (Stint owns the file). Never throws on a bad file.</summary>
+public record StudyCourse(string Name, string Color);
+
 public sealed record StudyLog(IReadOnlyList<StudySession> Sessions, int GoalMinutes)
 {
-    public static string DefaultPath { get; } =
+    /// <summary>Every Stint subject (course) with its colour, in Stint's order.</summary>
+    public IReadOnlyList<StudyCourse> Courses { get; init; } = [];
+
+    /// <summary>Stint's log. COMMANDHUB_STINT_DATA points elsewhere (for testing).</summary>
+    public static string DefaultPath { get; } = Environment.GetEnvironmentVariable("COMMANDHUB_STINT_DATA") is { Length: > 0 } custom ? custom :
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Stint", "data.json");
 
     private static readonly Guid GeneralId = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -64,7 +70,8 @@ public sealed record StudyLog(IReadOnlyList<StudySession> Sessions, int GoalMinu
                     catch (ArgumentException) { continue; } // e.g. a start at the very edge of the calendar
 
                     var subject = Str(s, "subjectId") is { } sid && Guid.TryParse(sid, out var sg) && subjects.TryGetValue(sg, out var found) ? found : general;
-                    var task = (Str(s, "description") ?? "").Trim();
+                    // "Lecture  8" and "Lecture 8" are the same task; line breaks become spaces too.
+                    var task = System.Text.RegularExpressions.Regex.Replace(Str(s, "description") ?? "", @"\s+", " ").Trim();
                     int rating = s.TryGetProperty("rating", out var r) && r.TryGetInt32(out int rv) ? Math.Clamp(rv, 0, 5) : 0;
                     sessions.Add(new StudySession(
                         local, seconds, subject.Name, subject.Color,
@@ -77,7 +84,10 @@ public sealed record StudyLog(IReadOnlyList<StudySession> Sessions, int GoalMinu
                 && st.TryGetProperty("dailyGoalMinutes", out var gm) && gm.TryGetInt32(out int gmv) && gmv > 0)
                 goal = gmv;
 
-            return new StudyLog(sessions.OrderBy(x => x.Start).ToList(), goal);
+            return new StudyLog(sessions.OrderBy(x => x.Start).ToList(), goal)
+            {
+                Courses = subjects.Values.Select(v => new StudyCourse(v.Name, v.Color)).ToList(),
+            };
         }
         catch (JsonException)
         {

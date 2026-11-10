@@ -45,6 +45,16 @@ Everything saves automatically.
 
 It only reads the log, never changes it, and refreshes when Stint saves.
 
+## Planner tab
+
+**Planner**, below Study in the sidebar, holds classes, deadlines, exams and events.
+
+- **Week and month views.** Each day shows what's planned. Under it is how long you actually studied that day according to Stint, coloured by course, so plan and reality sit side by side.
+- **Classes can repeat weekly,** with an optional end date.
+- **Coming up** lists the next three weeks with anything overdue at the top in red. Tick a deadline off right there.
+- **Add or edit** in a popup with a mini calendar. Dates and times can be typed naturally ("fri", "20 nov", "2pm"). Pick a course from your Stint courses so items get that course's colour.
+- **Up next** is a Home tile showing the next few items. Click its corner button to open the Planner.
+
 ## Install and updates
 
 Download `CommandHub-win-Setup.exe` from the latest GitHub release and run it. It installs for your account only, so no admin rights are needed.

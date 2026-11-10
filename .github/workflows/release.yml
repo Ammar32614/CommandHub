@@ -21,9 +21,9 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
@@ -53,7 +53,7 @@ jobs:
       - name: Pack
         run: >
           vpk pack --packId CommandHub --packVersion ${{ steps.v.outputs.version }} --packDir publish
-          --mainExe CommandHub.exe --packTitle "Command hub" --packAuthors "Ammar32614"
+          --mainExe CommandHub.exe --packTitle "Command hub" --packAuthors "Ammar32614" --icon Assets/commandhub.ico
 
       - name: Upload release
         run: >

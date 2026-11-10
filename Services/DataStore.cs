@@ -142,6 +142,15 @@ public class DataStore(string path)
         data.Pages = (data.Pages ?? []).Where(p => p is not null).ToList();
         if (data.Pages.Count == 0) data.Pages = [HubData.CreateHome()];
 
+        data.Planner = (data.Planner ?? []).Where(p => p is not null).ToList();
+        foreach (var item in data.Planner)
+        {
+            if (string.IsNullOrWhiteSpace(item.Title)) item.Title = "Untitled";
+            item.Course ??= "";
+            item.Notes ??= "";
+            if (item.Id == Guid.Empty) item.Id = Guid.NewGuid();
+        }
+
         foreach (var page in data.Pages)
         {
             if (string.IsNullOrWhiteSpace(page.Name)) page.Name = "Page";
