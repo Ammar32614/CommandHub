@@ -9,9 +9,23 @@
     <AssemblyName>CommandHub</AssemblyName>
     <RootNamespace>CommandHub</RootNamespace>
     <Product>Command hub</Product>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+  <!-- Custom Main (in App.xaml.cs) so Velopack runs before WPF starts. -->
+  <PropertyGroup>
+    <StartupObject>CommandHub.App</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="CommandHub.Tests/**;docs/**;.superpowers/**" />

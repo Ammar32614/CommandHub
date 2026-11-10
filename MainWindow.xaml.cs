@@ -74,6 +74,20 @@ public partial class MainWindow : Window
 
     public void ShowSettings() => SettingsNav.IsChecked = true;
 
+    // ---------------- Updates ----------------
+
+    /// <summary>Shows the sidebar card when an update has been downloaded; Settings shows the rest.</summary>
+    public void ShowUpdateState()
+    {
+        var u = App.Updater;
+        bool ready = u.State == UpdateState.Ready;
+        UpdateCard.Visibility = ready ? Visibility.Visible : Visibility.Collapsed;
+        UpdateText.Text = ready ? $"Version {u.ReadyVersion ?? "new"} is downloaded. Your data stays as it is." : "";
+        (PageHost.Content as SettingsPage)?.RefreshUpdates();
+    }
+
+    private void RestartToUpdate_Click(object sender, RoutedEventArgs e) => App.Updater.ApplyAndRestart();
+
     private void ShowStudy()
     {
         HideSheet();

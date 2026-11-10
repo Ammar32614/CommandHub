@@ -41,6 +41,16 @@
                     <TextBlock Text="Settings" FontSize="12" VerticalAlignment="Center"/>
                 </StackPanel>
             </RadioButton>
+            <!-- Shown when a downloaded update is waiting -->
+            <Border x:Name="UpdateCard" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="0,0,0,10" Padding="12,10"
+                    CornerRadius="10" Background="{DynamicResource Raised}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="UPDATE READY" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                    <TextBlock x:Name="UpdateText" FontSize="12" Margin="0,4,0,8" TextWrapping="Wrap"/>
+                    <Button Style="{StaticResource AccentButton}" Content="Restart to update" Padding="10,5" HorizontalAlignment="Left"
+                            Click="RestartToUpdate_Click" AutomationProperties.Name="Restart to update"/>
+                </StackPanel>
+            </Border>
             <StackPanel x:Name="PageNav"/>
         </DockPanel>
 

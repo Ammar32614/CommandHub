@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using CommandHub.Models;
 using CommandHub.Services;
+using Velopack;
 
 namespace CommandHub;
 
@@ -10,6 +11,20 @@ public partial class App : Application
 {
     public static DataStore Store { get; private set; } = null!;
     public static HubData Data { get; private set; } = null!;
+    public static Updates Updater { get; private set; } = null!;
+
+    /// <summary>
+    /// Entry point. Velopack must run first: during install, update and uninstall it starts the app
+    /// with special arguments, handles them and exits before any window is created.
+    /// </summary>
+    [STAThread]
+    private static void Main(string[] args)
+    {
+        VelopackApp.Build().Run();
+        var app = new App();
+        app.InitializeComponent();
+        app.Run();
+    }
 
     private Mutex? _instanceMutex;
     private EventWaitHandle? _activateSignal;
@@ -52,6 +67,7 @@ public partial class App : Application
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         ApplyTheme(Data.Settings.Theme);
+        Updater = new Updates();
 
         MainWindow = new MainWindow();
         // Launched by "Start with Windows": stay out of the way until needed.
@@ -61,6 +77,10 @@ public partial class App : Application
             ((MainWindow)MainWindow).ShowNotice("Your saved data couldn't be opened, so changes won't be saved until you restart Command hub.");
         else if (Store.RecoveredBackupPath is { } backup)
             ((MainWindow)MainWindow).ShowNotice($"Your saved data was damaged, so Command hub started fresh. A copy was kept at {backup}");
+
+        Updater.Changed += () => ((MainWindow)MainWindow).ShowUpdateState();
+        ((MainWindow)MainWindow).ShowUpdateState();
+        Updater.StartBackgroundChecks();
     }
 
     /// <summary>A short name-safe hash that is the same on every run (string.GetHashCode is not).</summary>

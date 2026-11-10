@@ -1,0 +1,62 @@
+name: Release
+
+# Push a tag like v1.0.0 to build, test and publish a GitHub Release with Velopack:
+#   CommandHub-win-Setup.exe        installer (per-user, no admin)
+#   CommandHub-<ver>-full.nupkg     full package
+#   CommandHub-<ver>-delta.nupkg    small update from the previous release
+#   CommandHub-win-Portable.zip     no install
+# Installed copies find the new release and offer "Restart to update". User data in
+# %AppData%\CommandHub is never part of the package, so updates can't touch it.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  VPK_VERSION: 1.2.161   # keep in step with the Velopack package in CommandHub.csproj
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Version from tag
+        id: v
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}'.TrimStart('v')
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test CommandHub.Tests -c Release
+
+      - name: Publish
+        run: >
+          dotnet publish CommandHub.csproj -c Release -r win-x64 --self-contained true
+          -p:Version=${{ steps.v.outputs.version }} -p:DebugType=none -o publish
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk --version ${{ env.VPK_VERSION }}
+
+      # The previous release lets vpk build a small delta update. There is none before the first release.
+      - name: Download previous release
+        continue-on-error: true
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pack
+        run: >
+          vpk pack --packId CommandHub --packVersion ${{ steps.v.outputs.version }} --packDir publish
+          --mainExe CommandHub.exe --packTitle "Command hub" --packAuthors "Ammar32614"
+
+      - name: Upload release
+        run: >
+          vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish
+          --releaseName "Command hub ${{ steps.v.outputs.version }}" --tag v${{ steps.v.outputs.version }}
+          --token ${{ secrets.GITHUB_TOKEN }}

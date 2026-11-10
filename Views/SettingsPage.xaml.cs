@@ -21,7 +21,32 @@ public partial class SettingsPage : UserControl
         catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException) { StartWithWindows.IsEnabled = false; }
         _loading = false;
         BuildThemes();
+        RefreshUpdates();
     }
+
+    // ---------------- Updates ----------------
+
+    public void RefreshUpdates()
+    {
+        var u = App.Updater;
+        VersionText.Text = $"Command hub {u.CurrentVersion}";
+        UpdateStatus.Text = u.State switch
+        {
+            UpdateState.NotInstalled => "Running from source. Updates work in the installed app.",
+            UpdateState.Checking => "Checking for updates…",
+            UpdateState.Downloading => "Downloading an update…",
+            UpdateState.UpToDate => "You're on the latest version.",
+            UpdateState.Ready => $"Version {u.ReadyVersion ?? "new"} is ready. Restart to finish updating.",
+            UpdateState.Failed => u.Error ?? "Couldn't check for updates.",
+            _ => "Checks for updates automatically every few hours.",
+        };
+        CheckBtn.IsEnabled = u.State is UpdateState.Idle or UpdateState.UpToDate or UpdateState.Failed;
+        RestartBtn.Visibility = u.State == UpdateState.Ready ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await App.Updater.CheckAsync();
+
+    private void RestartUpdate_Click(object sender, RoutedEventArgs e) => App.Updater.ApplyAndRestart();
 
     private void StartWithWindows_Changed(object sender, RoutedEventArgs e)
     {

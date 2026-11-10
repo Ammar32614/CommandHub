@@ -4,3 +4,5 @@ obj/
 .vs/
 .superpowers/
 TestResults/
+publish/
+Releases/

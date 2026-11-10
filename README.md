@@ -45,6 +45,30 @@ Everything saves automatically.
 
 It only reads the log, never changes it, and refreshes when Stint saves.
 
+## Install and updates
+
+Download `CommandHub-win-Setup.exe` from the latest GitHub release and run it. It installs for your account only, so no admin rights are needed.
+
+Updates happen inside the app; you never reinstall:
+
+- The app checks GitHub about 15 seconds after it starts, then every 4 hours. You can also press **Settings → Check for updates**.
+- A new version downloads in the background. When it's ready, **Update ready → Restart to update** appears in the sidebar.
+- Restarting saves everything, copies `data.json` to `%AppData%\CommandHub\backups\` (the newest five copies are kept), swaps in the new version, and reopens.
+
+**Your data is safe across updates.** The app is installed in `%LocalAppData%\CommandHub`, and that folder is all an update replaces. Your tiles, notes, settings and layout live separately in `%AppData%\CommandHub`. Uninstalling doesn't delete them either.
+
+### Releasing a new version
+
+1. Bump `<Version>` in `CommandHub.csproj`.
+2. Commit, then tag and push:
+
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+
+GitHub Actions (`.github/workflows/release.yml`) tests, builds, packs with Velopack (including a small delta update from the previous version) and publishes the release. Installed copies pick it up on their next check.
+
 ## Run it
 
 You need the .NET 10 SDK on Windows 10 or 11.

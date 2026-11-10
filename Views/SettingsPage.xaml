@@ -18,6 +18,24 @@
                     </StackPanel>
                 </CheckBox>
             </Border>
+
+            <TextBlock Text="Updates" Style="{StaticResource SectionTitle}" Margin="0,24,0,10"/>
+            <Border Style="{StaticResource Card}">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="CheckBtn" Style="{StaticResource GhostButton}" Content="Check for updates" Padding="12,6"
+                                Click="CheckUpdates_Click" AutomationProperties.Name="Check for updates"/>
+                        <Button x:Name="RestartBtn" Style="{StaticResource AccentButton}" Content="Restart to update" Padding="12,6"
+                                Margin="8,0,0,0" Visibility="Collapsed" Click="RestartUpdate_Click" AutomationProperties.Name="Restart to update"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,16,0">
+                        <TextBlock x:Name="VersionText"/>
+                        <TextBlock x:Name="UpdateStatus" Style="{StaticResource Caption}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <TextBlock Style="{StaticResource Caption}" Margin="2,8,0,0" TextWrapping="Wrap"
+                       Text="Updates replace only the app. Your tiles, notes and settings live in %AppData%\CommandHub and are copied to a backups folder before each update."/>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
