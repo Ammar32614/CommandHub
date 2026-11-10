@@ -1,0 +1,13 @@
+<UserControl x:Class="CommandHub.Tiles.Note.NoteTileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <TextBlock x:Name="Placeholder" Text="Write something…" Foreground="{DynamicResource Muted}" FontSize="13"
+                   Margin="2,0,0,0" IsHitTestVisible="False"/>
+        <TextBox x:Name="Editor" AcceptsReturn="True" AcceptsTab="False" TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto" Background="Transparent" BorderThickness="0" Padding="0"
+                 Foreground="{DynamicResource Text}" CaretBrush="{DynamicResource Text}"
+                 SelectionBrush="{DynamicResource AccentBrush}" FontSize="13" FocusVisualStyle="{x:Null}"
+                 AutomationProperties.Name="Note text"/>
+    </Grid>
+</UserControl>

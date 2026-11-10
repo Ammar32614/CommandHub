@@ -57,8 +57,13 @@ public partial class App : Application
         base.OnExit(e);
     }
 
+    private static Debouncer? _saveSoon;
+
+    /// <summary>Saves after typing pauses for 600 ms.</summary>
+    public static void SaveSoon() => (_saveSoon ??= new Debouncer(TimeSpan.FromMilliseconds(600), SaveNow)).Request();
+
     /// <summary>Writes anything still waiting to be saved.</summary>
-    public static void FlushSaves() { }
+    public static void FlushSaves() => _saveSoon?.Flush();
 
     private static bool _warnedReadOnly;
 

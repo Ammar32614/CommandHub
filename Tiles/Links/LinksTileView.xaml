@@ -1,0 +1,36 @@
+<UserControl x:Class="CommandHub.Tiles.Links.LinksTileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <!-- Normal view -->
+        <DockPanel x:Name="ShowPanel">
+            <TextBlock x:Name="ErrorText" DockPanel.Dock="Bottom" Foreground="{DynamicResource Danger}" FontSize="12"
+                       TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+            <Grid>
+                <StackPanel x:Name="EmptyPanel" VerticalAlignment="Center" HorizontalAlignment="Left">
+                    <TextBlock Text="Open websites, folders or apps in one click." Foreground="{DynamicResource Muted}"
+                               FontSize="12" TextWrapping="Wrap"/>
+                    <Button Style="{StaticResource GhostButton}" Content="Add a link" HorizontalAlignment="Left"
+                            Margin="0,8,0,0" Padding="10,5" Click="Edit_Click"/>
+                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                    <WrapPanel x:Name="LinkButtons"/>
+                </ScrollViewer>
+            </Grid>
+        </DockPanel>
+        <Button x:Name="EditBtn" Style="{StaticResource IconButton}" Width="26" Height="26" FontSize="11"
+                Content="&#xE70F;" ToolTip="Edit links" AutomationProperties.Name="Edit links"
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-32,-6,0" Click="Edit_Click"/>
+
+        <!-- Edit view -->
+        <DockPanel x:Name="EditPanel" Visibility="Collapsed">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                <Button Style="{StaticResource GhostButton}" Content="Add a link" Padding="10,5" Click="AddRow_Click"/>
+                <Button Style="{StaticResource AccentButton}" Content="Done" Padding="14,5" Margin="8,0,0,0" Click="Done_Click"/>
+            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                <StackPanel x:Name="Rows"/>
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
+</UserControl>

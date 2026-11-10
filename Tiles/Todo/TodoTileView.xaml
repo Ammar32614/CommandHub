@@ -1,0 +1,14 @@
+<UserControl x:Class="CommandHub.Tiles.Todo.TodoTileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel>
+        <TextBox x:Name="AddBox" DockPanel.Dock="Bottom" Style="{StaticResource FieldBox}" Tag="Add a to-do"
+                 Padding="8,5" FontSize="12" Margin="0,8,0,0" AutomationProperties.Name="Add a to-do"/>
+        <Grid>
+            <TextBlock x:Name="EmptyText" Text="Nothing to do yet." Foreground="{DynamicResource Muted}" FontSize="12"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                <StackPanel x:Name="List"/>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</UserControl>

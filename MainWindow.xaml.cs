@@ -45,10 +45,7 @@ public partial class MainWindow : Window
         return sp;
     }
 
-    public void ShowPage(Page page) => PageHost.Content = new TextBlock
-    {
-        Text = page.Name, Margin = new Thickness(24), Style = (Style)FindResource("PageTitle"),
-    };
+    public void ShowPage(Page page) => PageHost.Content = new BoardView(page);
 
     public void ShowSettings() => SettingsNav.IsChecked = true;
 
