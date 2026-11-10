@@ -31,6 +31,20 @@ It's a sibling to [Stint](../Timer%20app). It has the same look and the same the
 
 Everything saves automatically.
 
+## Study tab
+
+**Study**, below Home in the sidebar, turns Stint's log into analytics:
+
+- **Time studied** for the last 7 days, 30 days or all time, compared with the period before.
+- **Daily average**, **goal days**, **streak** and **longest sitting**.
+- **Every day:** a bar per day, split by course colour, with your goal as a line. Long ranges switch to weekly bars.
+- **By course:** each course's share of your time. Click a course to filter the next list.
+- **What you worked on:** each course + task pair (what you typed in Stint's "What are you working on?"), so "Assignment 2h" and "Lecture 8 1h" are separate rows.
+- **When you study:** a weekday × hour heatmap and your peak two hours.
+- **Insights** in plain words, and your **recent sessions**.
+
+It only reads the log, never changes it, and refreshes when Stint saves.
+
 ## Run it
 
 You need the .NET 10 SDK on Windows 10 or 11.

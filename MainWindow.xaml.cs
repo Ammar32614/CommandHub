@@ -34,6 +34,21 @@ public partial class MainWindow : Window
             System.Windows.Automation.AutomationProperties.SetName(item, page.Name);
             item.Checked += (_, _) => ShowPage(page);
             PageNav.Children.Add(item);
+
+            // Study sits directly below Home.
+            if (page == App.Data.Pages[0])
+            {
+                var study = new RadioButton
+                {
+                    GroupName = "Nav",
+                    Style = (Style)FindResource("NavItem"),
+                    Content = NavContent("", "Study"),
+                    Margin = new Thickness(0, 0, 0, 2),
+                };
+                System.Windows.Automation.AutomationProperties.SetName(study, "Study");
+                study.Checked += (_, _) => ShowStudy();
+                PageNav.Children.Add(study);
+            }
         }
         if (PageNav.Children.Count > 0) ((RadioButton)PageNav.Children[0]).IsChecked = true;
     }
@@ -58,6 +73,13 @@ public partial class MainWindow : Window
     }
 
     public void ShowSettings() => SettingsNav.IsChecked = true;
+
+    private void ShowStudy()
+    {
+        HideSheet();
+        App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
+        PageHost.Content = new Study.StudyPage();
+    }
 
     // ---------------- Sheet and toast ----------------
 
