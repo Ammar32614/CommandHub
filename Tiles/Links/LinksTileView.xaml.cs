@@ -16,7 +16,15 @@ public partial class LinksTileView : UserControl
         _ctx = ctx;
         _links = LinksContent.Read(ctx.Content);
         _errorTimer.Tick += (_, _) => { _errorTimer.Stop(); ErrorText.Visibility = Visibility.Collapsed; };
-        Unloaded += (_, _) => _errorTimer.Stop();
+        // The board rebuilds tiles (edit mode, add, remove, page switch) and the app can close:
+        // either way, keep half-finished edits.
+        Loaded += (_, _) => App.CommittingEdits += CommitIfEditing;
+        Unloaded += (_, _) =>
+        {
+            _errorTimer.Stop();
+            App.CommittingEdits -= CommitIfEditing;
+            CommitIfEditing();
+        };
         ShowLinks();
     }
 
@@ -41,7 +49,7 @@ public partial class LinksTileView : UserControl
             var content = new StackPanel { Orientation = Orientation.Horizontal };
             content.Children.Add(new TextBlock
             {
-                Text = GlyphFor(LinkTarget.Classify(link.Target)), FontFamily = (System.Windows.Media.FontFamily)FindResource("IconFont"),
+                Text = GlyphFor(LinkTarget.Guess(link.Target)), FontFamily = (System.Windows.Media.FontFamily)FindResource("IconFont"),
                 FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0),
             });
             content.Children.Add(new TextBlock { Text = link.Name.Length > 0 ? link.Name : link.Target, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 180, TextTrimming = TextTrimming.CharacterEllipsis });
@@ -108,6 +116,17 @@ public partial class LinksTileView : UserControl
 
     private void Done_Click(object sender, RoutedEventArgs e)
     {
+        CommitEdits();
+        ShowLinks();
+    }
+
+    private void CommitIfEditing()
+    {
+        if (EditPanel.Visibility == Visibility.Visible) CommitEdits();
+    }
+
+    private void CommitEdits()
+    {
         _links = Rows.Children.OfType<DockPanel>()
             .Select(r => r.Children.OfType<TextBox>().ToArray())
             .Select(b => new QuickLink(b[0].Text.Trim(), b[1].Text.Trim()))
@@ -115,6 +134,5 @@ public partial class LinksTileView : UserControl
             .ToList();
         LinksContent.Write(_ctx.Content, _links);
         _ctx.SaveNow();
-        ShowLinks();
     }
 }

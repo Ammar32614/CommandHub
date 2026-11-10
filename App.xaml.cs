@@ -48,6 +48,8 @@ public partial class App : Application
         MainWindow.Show();
         if (Store.ReadFailed)
             ((MainWindow)MainWindow).ShowNotice("Your saved data couldn't be opened, so changes won't be saved until you restart Command hub.");
+        else if (Store.RecoveredBackupPath is { } backup)
+            ((MainWindow)MainWindow).ShowNotice($"Your saved data was damaged, so Command hub started fresh. A copy was kept at {backup}");
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -62,8 +64,18 @@ public partial class App : Application
     /// <summary>Saves after typing pauses for 600 ms.</summary>
     public static void SaveSoon() => (_saveSoon ??= new Debouncer(TimeSpan.FromMilliseconds(600), SaveNow)).Request();
 
+    /// <summary>
+    /// Raised just before the final save (window closing, sign-out, exit) so views holding
+    /// half-finished edits can write them into their tile content first.
+    /// </summary>
+    public static event Action? CommittingEdits;
+
     /// <summary>Writes anything still waiting to be saved.</summary>
-    public static void FlushSaves() => _saveSoon?.Flush();
+    public static void FlushSaves()
+    {
+        CommittingEdits?.Invoke();
+        _saveSoon?.Flush();
+    }
 
     private static bool _warnedReadOnly;
 

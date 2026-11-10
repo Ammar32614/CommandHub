@@ -72,6 +72,38 @@ public class DataStoreTests : IDisposable
     }
 
     [Fact]
+    public void Load_NewerVersionWithUnknownEnum_RefusesToOverwriteAndIsNotCorrupt()
+    {
+        var json = """{"version":2,"pages":[{"name":"Home","tiles":[{"typeId":"note","column":0,"row":0,"size":"Huge"}]}]}""";
+        WriteRaw(json);
+        var s = new DataStore(PathIn);
+        s.Load();
+        Assert.True(s.ReadFailed);
+        Assert.False(s.Save(HubData.CreateDefault()));
+        Assert.Equal(json, File.ReadAllText(PathIn));
+        Assert.Empty(Directory.GetFiles(_dir, "data.corrupt-*.json"));
+    }
+
+    [Fact]
+    public void Load_CorruptFile_ReportsWhereTheBackupIs()
+    {
+        WriteRaw("{ not json");
+        var s = new DataStore(PathIn);
+        s.Load();
+        Assert.NotNull(s.RecoveredBackupPath);
+        Assert.True(File.Exists(s.RecoveredBackupPath));
+    }
+
+    [Fact]
+    public void Load_GoodFile_HasNoBackupPath()
+    {
+        var s = new DataStore(PathIn);
+        s.Save(HubData.CreateDefault());
+        s.Load();
+        Assert.Null(s.RecoveredBackupPath);
+    }
+
+    [Fact]
     public void Load_OverlappingTiles_AreRepaired()
     {
         WriteRaw("""

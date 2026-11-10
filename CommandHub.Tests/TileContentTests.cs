@@ -69,6 +69,29 @@ public class TileContentTests
     [InlineData("not a link", LinkKind.Invalid)]
     public void LinkTarget_Classify(string t, LinkKind k) => Assert.Equal(k, LinkTarget.Classify(t));
 
+    [Theory]
+    [InlineData("www.example.com", LinkKind.Web)]
+    [InlineData("  WWW.Example.com/path ", LinkKind.Web)]
+    public void LinkTarget_BareWww_IsWeb(string t, LinkKind k) => Assert.Equal(k, LinkTarget.Classify(t));
+
+    [Theory]
+    [InlineData("www.example.com", "https://www.example.com")]
+    [InlineData(" https://a.com ", "https://a.com")]
+    [InlineData("C:\\Apps", "C:\\Apps")]
+    public void LinkTarget_Normalize(string t, string expected) => Assert.Equal(expected, LinkTarget.Normalize(t));
+
+    // Guess never touches the disk, so a link to an offline network share can't freeze the UI while drawing icons.
+    [Theory]
+    [InlineData("https://example.com", LinkKind.Web)]
+    [InlineData("www.example.com", LinkKind.Web)]
+    [InlineData(@"\\offline-nas\share\movies", LinkKind.Folder)]
+    [InlineData(@"\\offline-nas\share\report.pdf", LinkKind.File)]
+    [InlineData(@"C:\Apps\Stint.exe", LinkKind.File)]
+    [InlineData(@"C:\Users\me\Documents", LinkKind.Folder)]
+    [InlineData("", LinkKind.Invalid)]
+    [InlineData("not a link", LinkKind.Invalid)]
+    public void LinkTarget_Guess_UsesTextOnly(string t, LinkKind k) => Assert.Equal(k, LinkTarget.Guess(t));
+
     [Fact]
     public void LinkTarget_ExistingFolder_IsFolder() => Assert.Equal(LinkKind.Folder, LinkTarget.Classify(Path.GetTempPath()));
 

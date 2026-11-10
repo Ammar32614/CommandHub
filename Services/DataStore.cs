@@ -21,6 +21,9 @@ public class DataStore(string path)
 
     public string FilePath => path;
 
+    /// <summary>Set when the last Load found a damaged file and kept a copy of it here before starting fresh.</summary>
+    public string? RecoveredBackupPath { get; private set; }
+
     /// <summary>
     /// True when the last Load couldn't read (or back up) the file, or the file came from a newer
     /// version of the app. Save then refuses to overwrite it.
@@ -30,6 +33,7 @@ public class DataStore(string path)
     public HubData Load()
     {
         ReadFailed = false;
+        RecoveredBackupPath = null;
         if (!File.Exists(path)) return HubData.CreateDefault();
 
         string json;
@@ -51,11 +55,20 @@ public class DataStore(string path)
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
         {
+            // A newer Command hub may use values this version can't read (a new tile size, say).
+            // That file isn't damaged: run on defaults but never write over it.
+            if (VersionOf(json) > HubData.CurrentVersion)
+            {
+                ReadFailed = true;
+                return HubData.CreateDefault();
+            }
+
             // Keep the unreadable file so nothing is silently lost, then start fresh.
             try
             {
                 var backup = Path.Combine(Path.GetDirectoryName(path)!, $"data.corrupt-{DateTime.Now:yyyyMMddHHmmss}.json");
                 File.Copy(path, backup, overwrite: true);
+                RecoveredBackupPath = backup;
             }
             catch (Exception copyEx) when (copyEx is IOException or UnauthorizedAccessException)
             {
@@ -85,6 +98,22 @@ public class DataStore(string path)
         File.WriteAllText(tmp, JsonSerializer.Serialize(data, Json));
         File.Move(tmp, path, overwrite: true);
         return true;
+    }
+
+    /// <summary>The top-level "version" number, or 0 if the text isn't JSON or has none.</summary>
+    private static int VersionOf(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("version", out var v)
+                && v.TryGetInt32(out int n) ? n : 0;
+        }
+        catch (JsonException)
+        {
+            return 0;
+        }
     }
 
     /// <summary>Replaces nulls a hand-edited or damaged file can contain, so the rest of the app never sees them.</summary>
