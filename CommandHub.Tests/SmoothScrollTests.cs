@@ -32,3 +32,30 @@ public class SmoothScrollTests
     public void InTiles_AfterHalfTheHeader(double offset, double header, bool expected) =>
         Assert.Equal(expected, SmoothScroll.InTiles(offset, header));
 }
+
+public class SmoothScrollFrameTests
+{
+    [Fact]
+    public void Frame_TargetBeyondShrunkPage_StopsAtTheEnd()
+    {
+        var (offset, done) = SmoothScroll.Frame(current: 499.8, target: 900, scrollable: 500, lastSet: 499.8, seconds: 0.016);
+        Assert.Equal(500, offset);
+        Assert.True(done);
+    }
+
+    [Fact]
+    public void Frame_UserMovedTheScrollbar_StopsAndKeepsTheirPosition()
+    {
+        var (offset, done) = SmoothScroll.Frame(current: 120, target: 600, scrollable: 1000, lastSet: 300, seconds: 0.016);
+        Assert.Equal(120, offset);
+        Assert.True(done);
+    }
+
+    [Fact]
+    public void Frame_NormalGlide_KeepsGoing()
+    {
+        var (offset, done) = SmoothScroll.Frame(current: 0, target: 600, scrollable: 1000, lastSet: null, seconds: 0.016);
+        Assert.InRange(offset, 1, 599);
+        Assert.False(done);
+    }
+}

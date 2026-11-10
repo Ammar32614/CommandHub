@@ -55,14 +55,19 @@ public sealed record StudyLog(IReadOnlyList<StudySession> Sessions, int GoalMinu
                 foreach (var s in list.EnumerateArray())
                 {
                     if (s.ValueKind != JsonValueKind.Object) continue;
-                    if (Str(s, "start") is not { } startText || !DateTimeOffset.TryParse(startText, out var start)) continue;
+                    if (Str(s, "start") is not { } startText
+                        || !DateTimeOffset.TryParse(startText, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var start)) continue;
                     if (!s.TryGetProperty("seconds", out var secs) || !secs.TryGetInt32(out int seconds) || seconds <= 0) continue;
+                    seconds = Math.Min(seconds, 86400); // a damaged entry must not overflow totals
+                    DateTime local;
+                    try { local = TimeZoneInfo.ConvertTime(start, zone).DateTime; }
+                    catch (ArgumentException) { continue; } // e.g. a start at the very edge of the calendar
 
                     var subject = Str(s, "subjectId") is { } sid && Guid.TryParse(sid, out var sg) && subjects.TryGetValue(sg, out var found) ? found : general;
                     var task = (Str(s, "description") ?? "").Trim();
                     int rating = s.TryGetProperty("rating", out var r) && r.TryGetInt32(out int rv) ? Math.Clamp(rv, 0, 5) : 0;
                     sessions.Add(new StudySession(
-                        TimeZoneInfo.ConvertTime(start, zone).DateTime, seconds, subject.Name, subject.Color,
+                        local, seconds, subject.Name, subject.Color,
                         task.Length > 0 ? task : "Untitled", Str(s, "mode") ?? "", rating));
                 }
             }

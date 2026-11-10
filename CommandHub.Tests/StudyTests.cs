@@ -178,3 +178,29 @@ public class StudyStatsTests
     [InlineData(3 * 3600 + 26 * 60, "3h 26m")]
     public void Format(int seconds, string expected) => Assert.Equal(expected, StudyStats.Format(seconds));
 }
+
+public class StudyHardeningTests
+{
+    [Fact]
+    public void Parse_HugeSeconds_IsCappedAtADay_AndTotalsDoNotOverflow()
+    {
+        var log = StudyLog.Parse("""{"sessions":[{"start":"2026-11-10T09:00:00+05:00","seconds":2147483647},{"start":"2026-11-10T10:00:00+05:00","seconds":2147483647}]}""", TimeZoneInfo.Utc)!;
+        Assert.All(log.Sessions, s => Assert.Equal(86400, s.Seconds));
+        var day = new DateOnly(2026, 11, 10);
+        Assert.Equal(2 * 86400, StudyStats.Summarise(log.Sessions, day, day, 60).TotalSeconds);
+    }
+
+    [Fact]
+    public void Parse_ExtremeStart_IsSkipped_NotThrown()
+    {
+        var log = StudyLog.Parse("""{"sessions":[{"start":"0001-01-01T00:00:00+05:00","seconds":60},{"start":"2026-11-10T09:00:00+05:00","seconds":60}]}""", TimeZoneInfo.Utc)!;
+        Assert.Single(log.Sessions);
+    }
+
+    [Theory]
+    [InlineData(7, 1)]
+    [InlineData(30, 3)]
+    [InlineData(52, 6)]
+    [InlineData(150, 15)]
+    public void LabelEvery_KeepsAboutTenLabels(int bars, int every) => Assert.Equal(every, StudyStats.LabelEvery(bars));
+}

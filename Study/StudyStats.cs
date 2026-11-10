@@ -150,6 +150,9 @@ public static class StudyStats
         return lines;
     }
 
+    /// <summary>Label every Nth bar so a chart shows about ten labels whatever its length.</summary>
+    public static int LabelEvery(int bars) => bars <= 10 ? 1 : (int)Math.Ceiling(bars / 10.0);
+
     /// <summary>"3h 26m", "3h", "25m", "0m".</summary>
     public static string Format(int seconds)
     {

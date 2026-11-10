@@ -314,10 +314,12 @@ public sealed class StudyPage : UserControl
             Grid.SetColumn(hit, i);
             bars.Children.Add(hit);
 
-            bool labelIt = buckets.Count <= 10 || i % (buckets.Count <= 31 ? 5 : 4) == 0 || i == buckets.Count - 1;
+            int every = StudyStats.LabelEvery(buckets.Count);
+            bool labelIt = i % every == 0 || (i == buckets.Count - 1 && i % every >= (every + 1) / 2);
             if (labelIt)
             {
-                var text = buckets.Count <= 10 ? b.Day.ToString("ddd d") : b.Day.ToString("d MMM");
+                bool overAYear = buckets[^1].Day.DayNumber - buckets[0].Day.DayNumber > 365;
+                var text = buckets.Count <= 10 ? b.Day.ToString("ddd d") : b.Day.ToString(overAYear ? "MMM yy" : "d MMM");
                 var lbl = T(text, 10, b.Day == DateOnly.FromDateTime(DateTime.Today) ? "Text" : "Muted");
                 lbl.HorizontalAlignment = HorizontalAlignment.Center;
                 lbl.VerticalAlignment = VerticalAlignment.Bottom;

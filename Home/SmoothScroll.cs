@@ -73,19 +73,36 @@ public sealed class SmoothScroll
         CompositionTarget.Rendering += OnFrame;
     }
 
+    /// <summary>
+    /// One frame of a glide. Stops when the target is reached, when the page has become shorter than the
+    /// target (it clamps to the end), or when something else moved the offset (the user dragged the scrollbar).
+    /// </summary>
+    public static (double Offset, bool Done) Frame(double current, double target, double scrollable, double? lastSet, double seconds)
+    {
+        if (lastSet is { } set && Math.Abs(current - set) > 0.5) return (current, true);
+        target = Math.Clamp(target, 0, Math.Max(0, scrollable));
+        double next = Step(current, target, seconds);
+        return (next, next == target);
+    }
+
+    private double? _lastSet;
+
     private void OnFrame(object? sender, EventArgs e)
     {
         double dt = _clock.Elapsed.TotalSeconds;
         _clock.Restart();
-        double next = Step(_sv.VerticalOffset, _target, dt);
-        _sv.ScrollToVerticalOffset(next);
-        if (next == _target) Stop();
+        var (next, done) = Frame(_sv.VerticalOffset, _target, _sv.ScrollableHeight, _lastSet, dt);
+        if (next != _sv.VerticalOffset) _sv.ScrollToVerticalOffset(next);
+        _lastSet = next;
+        if (done) Stop();
     }
 
     private void Stop()
     {
         if (!_running) return;
         _running = false;
+        _lastSet = null;
+        _target = _sv.VerticalOffset;
         CompositionTarget.Rendering -= OnFrame;
     }
 }
