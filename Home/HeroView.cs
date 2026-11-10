@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using CommandHub.Tiles.Greeting;
 using CommandHub.Tiles.Links;
@@ -19,6 +20,9 @@ public sealed class HeroView : UserControl
     private readonly Page _page;
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(20) };
     private bool _pinning;
+    private FrameworkElement? _pinEditor;   // built once per pin, reused across re-renders so typing survives
+    private bool _stale;                    // data changed while the user was busy in the header
+    private TextBlock? _breadcrumb, _eyebrow, _sub;
 
     /// <summary>Raised when the header changed tile content (ticked a to-do, pinned a link).</summary>
     public event Action? ContentChanged;
@@ -28,26 +32,41 @@ public sealed class HeroView : UserControl
     public HeroView(Page page)
     {
         _page = page;
-        _clock.Tick += (_, _) => Render();
+        // The clock only rewrites the time-based text; it never rebuilds (which would lose focus or typing).
+        _clock.Tick += (_, _) => UpdateClockText();
         Loaded += (_, _) =>
         {
-            App.Saved += OnSaved;
+            App.Saved += OnDataChanged;
             App.ThemeChanged += Render;
             _clock.Start();
             Render();
         };
         Unloaded += (_, _) =>
         {
-            App.Saved -= OnSaved;
+            App.Saved -= OnDataChanged;
             App.ThemeChanged -= Render;
             _clock.Stop();
+        };
+        // Catch up on changes that arrived while the user was typing or tabbing in the header.
+        IsKeyboardFocusWithinChanged += (_, _) =>
+        {
+            if (!IsKeyboardFocusWithin && _stale && !_pinning) Render();
         };
         Render();
     }
 
-    private void OnSaved()
+    private void OnDataChanged()
     {
-        if (!_pinning) Render();
+        if (_pinning || IsKeyboardFocusWithin) { _stale = true; return; }
+        Render();
+    }
+
+    private void UpdateClockText()
+    {
+        var now = DateTime.Now;
+        if (_breadcrumb != null) _breadcrumb.Text = HeroText.Breadcrumb(_page.Name, now);
+        if (_eyebrow != null) _eyebrow.Text = HeroText.Eyebrow(now.Hour);
+        if (_sub != null) _sub.Text = HeroText.SubLine(now.ToString("t").ToLowerInvariant(), now, HeroData.Weather(_page));
     }
 
     // ---------------- Colours ----------------
@@ -81,6 +100,7 @@ public sealed class HeroView : UserControl
 
     private void Render()
     {
+        _stale = false;
         var now = DateTime.Now;
         var weather = HeroData.Weather(_page);
 
@@ -100,12 +120,12 @@ public sealed class HeroView : UserControl
             DockPanel.SetDock(right, Dock.Right);
             top.Children.Add(right);
         }
-        top.Children.Add(T(HeroText.Breadcrumb(_page.Name, now), 11, "Muted"));
+        top.Children.Add(_breadcrumb = T(HeroText.Breadcrumb(_page.Name, now), 11, "Muted"));
         root.Children.Add(top);
 
         // Welcome block.
         var welcome = new StackPanel { Margin = new Thickness(0, 34, 0, 0) };
-        welcome.Children.Add(T(HeroText.Eyebrow(now.Hour), 10, "AccentBrush", FontWeights.SemiBold));
+        welcome.Children.Add(_eyebrow = T(HeroText.Eyebrow(now.Hour), 10, "AccentBrush", FontWeights.SemiBold));
         var headline = T("Your space.\nYour pace.", 52, "Text", FontWeights.Normal);
         headline.SetResourceReference(TextBlock.FontFamilyProperty, "DisplayFont");
         headline.TextTrimming = TextTrimming.None;
@@ -113,9 +133,11 @@ public sealed class HeroView : UserControl
         headline.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
         headline.Margin = new Thickness(-2, 14, 0, 12);
         welcome.Children.Add(headline);
-        welcome.Children.Add(T(HeroText.SubLine(now.ToString("t").ToLowerInvariant(), now, weather), 13, "Muted"));
-        welcome.Children.Add(_pinning ? PinEditor() : QuickRow());
+        welcome.Children.Add(_sub = T(HeroText.SubLine(now.ToString("t").ToLowerInvariant(), now, weather), 13, "Muted"));
+        if (_pinning) { _pinEditor ??= PinEditor(); (_pinEditor.Parent as Panel)?.Children.Remove(_pinEditor); }
+        welcome.Children.Add(_pinning ? _pinEditor! : QuickRow());
         welcome.Children.Add(LowerCards());
+        WindowChrome.SetIsHitTestVisibleInChrome(welcome, true); // clickable even when scrolled under the title strip
         Grid.SetRow(welcome, 1);
         root.Children.Add(welcome);
 
@@ -133,6 +155,7 @@ public sealed class HeroView : UserControl
         var tiles = TextButton("Your tiles", "\uE74B", () => ScrollToTilesRequested?.Invoke());
         tiles.HorizontalAlignment = HorizontalAlignment.Center;
         footer.Children.Add(tiles);
+        WindowChrome.SetIsHitTestVisibleInChrome(footer, true);
         Grid.SetRow(footer, 2);
         root.Children.Add(footer);
 
@@ -234,13 +257,15 @@ public sealed class HeroView : UserControl
 
         void Pin()
         {
+            App.CommitOpenEdits(); // an open links editor on the board would otherwise write over the new link
             if (!HeroData.PinLink(_page, name.Text, target.Text)) { error.Text = "Type a website, folder or app first."; target.Focus(); return; }
             _pinning = false;
+            _pinEditor = null;
             App.SaveNow();
             ContentChanged?.Invoke();
             Render();
         }
-        void Cancel() { _pinning = false; Render(); }
+        void Cancel() { _pinning = false; _pinEditor = null; Render(); }
 
         var pinBtn = new Button { Content = "Pin", Padding = new Thickness(14, 5, 14, 5) };
         pinBtn.SetResourceReference(FrameworkElement.StyleProperty, "AccentButton");
@@ -294,6 +319,7 @@ public sealed class HeroView : UserControl
             System.Windows.Automation.AutomationProperties.SetName(check, $"Mark {text} done");
             check.Click += (_, _) =>
             {
+                App.CommitOpenEdits();
                 if (!HeroData.TickTodo(_page, index)) return;
                 App.SaveNow();
                 ContentChanged?.Invoke();

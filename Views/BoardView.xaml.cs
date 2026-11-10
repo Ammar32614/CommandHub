@@ -38,6 +38,8 @@ public partial class BoardView : UserControl
             BoardScroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
             BoardScroll.PreviewMouseWheel += (_, e) =>
             {
+                // A list or note inside a tile that can still scroll this way gets the wheel first.
+                if (InnerCanScroll(e.OriginalSource as DependencyObject, e.Delta)) return;
                 e.Handled = true;
                 var up = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta) { RoutedEvent = MouseWheelEvent, Source = this };
                 (VisualTreeHelper.GetParent(this) as UIElement)?.RaiseEvent(up);
@@ -54,6 +56,20 @@ public partial class BoardView : UserControl
     }
 
     private static MainWindow? Main => Application.Current.MainWindow as MainWindow;
+
+    /// <summary>True if a scroll area between <paramref name="source"/> and the board can still move in the wheel's direction.</summary>
+    private bool InnerCanScroll(DependencyObject? source, int delta)
+    {
+        for (var node = source; node != null && node != BoardScroll; node = node is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))
+        {
+            if (node is ScrollViewer sv && sv.ScrollableHeight > 0)
+            {
+                bool canUp = sv.VerticalOffset > 0, canDown = sv.VerticalOffset < sv.ScrollableHeight;
+                if (delta > 0 ? canUp : canDown) return true;
+            }
+        }
+        return false;
+    }
 
     /// <summary>Rebuilds every tile (after something outside the board changed their content).</summary>
     public void Refresh() => Render();

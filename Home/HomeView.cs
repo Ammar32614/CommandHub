@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Shell;
 using CommandHub.Views;
 using Page = CommandHub.Models.Page;
 
@@ -22,6 +23,8 @@ public sealed class HomeView : UserControl
     {
         _hero = new HeroView(page);
         _board = new BoardView(page, embedded: true);
+        // Home paints under the 40 px title strip; once scrolled, tiles must still take clicks there.
+        WindowChrome.SetIsHitTestVisibleInChrome(_board, true);
 
         var stack = new StackPanel();
         stack.Children.Add(_hero);
@@ -39,7 +42,7 @@ public sealed class HomeView : UserControl
         _scroll.ScrollChanged += (_, e) =>
         {
             if (e.ViewportHeightChange == 0 || _scroll.ViewportHeight <= 0) return;
-            _hero.Height = Math.Max(560, _scroll.ViewportHeight);
+            _hero.MinHeight = Math.Max(560, _scroll.ViewportHeight); // MinHeight: grows instead of clipping in small windows
         };
 
         _hero.ContentChanged += _board.Refresh;

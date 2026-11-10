@@ -122,7 +122,10 @@ public partial class LinksTileView : UserControl
 
     private void CommitIfEditing()
     {
-        if (EditPanel.Visibility == Visibility.Visible) CommitEdits();
+        // Save and close: an editor left open would later write its (now stale) rows over newer content.
+        if (EditPanel.Visibility != Visibility.Visible) return;
+        CommitEdits();
+        ShowLinks();
     }
 
     private void CommitEdits()

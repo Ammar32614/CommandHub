@@ -167,7 +167,9 @@ public sealed class CountdownView : UserControl
     /// <summary>On rebuild or app close: keep what can be saved (rows with bad dates are dropped rather than blocking).</summary>
     private void CommitIfEditing()
     {
-        if (_rows is null || CommitEdits()) return;
+        // Save and close: an editor left open would later write its (now stale) rows over newer content.
+        if (_rows is null) return;
+        if (CommitEdits()) { Show(); return; }
         foreach (var row in _rows.Children.OfType<DockPanel>().ToList())
         {
             var boxes = row.Children.OfType<TextBox>().ToArray();
@@ -175,5 +177,6 @@ public sealed class CountdownView : UserControl
                 _rows.Children.Remove(row);
         }
         CommitEdits();
+        Show();
     }
 }
