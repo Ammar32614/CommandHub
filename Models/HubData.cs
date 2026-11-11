@@ -17,6 +17,8 @@ public class HubData
     public List<Page> Pages { get; set; } = [];
     public AppSettings Settings { get; set; } = new();
     public List<Planner.PlanItem> Planner { get; set; } = [];
+    public global::CommandHub.Money.MoneyData Money { get; set; } = new();
+    public List<global::CommandHub.Journal.JournalEntry> Journal { get; set; } = [];
 
     public static HubData CreateDefault() => new() { Pages = [CreateHome()] };
 

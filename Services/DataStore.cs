@@ -142,6 +142,24 @@ public class DataStore(string path)
         data.Pages = (data.Pages ?? []).Where(p => p is not null).ToList();
         if (data.Pages.Count == 0) data.Pages = [HubData.CreateHome()];
 
+        data.Money ??= new();
+        if (string.IsNullOrWhiteSpace(data.Money.Currency)) data.Money.Currency = Money.MoneyData.DefaultCurrency();
+        data.Money.CategoryBudgets ??= [];
+        data.Money.Transactions = (data.Money.Transactions ?? []).Where(t => t is not null).ToList();
+        foreach (var t in data.Money.Transactions)
+        {
+            if (string.IsNullOrWhiteSpace(t.Category)) t.Category = "Other";
+            t.Note ??= "";
+            t.Amount = Math.Abs(t.Amount);
+            if (t.Id == Guid.Empty) t.Id = Guid.NewGuid();
+        }
+
+        // One journal entry per day: if a damaged file has duplicates, keep the one with the most writing.
+        data.Journal = (data.Journal ?? []).Where(j => j is not null)
+            .Select(j => { j.Text ??= ""; j.Mood = Math.Clamp(j.Mood, 0, 5); return j; })
+            .GroupBy(j => j.Date).Select(g => g.OrderByDescending(j => j.Text.Length).First())
+            .OrderBy(j => j.Date).ToList();
+
         data.Planner = (data.Planner ?? []).Where(p => p is not null).ToList();
         foreach (var item in data.Planner)
         {

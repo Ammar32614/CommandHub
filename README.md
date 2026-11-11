@@ -55,6 +55,26 @@ It only reads the log, never changes it, and refreshes when Stint saves.
 - **Add or edit** in a popup with a mini calendar. Dates and times can be typed naturally ("fri", "20 nov", "2pm"). Pick a course from your Stint courses so items get that course's colour.
 - **Up next** is a Home tile showing the next few items. Click its corner button to open the Planner.
 
+## Money tab
+
+**Money** tracks spending against a monthly budget.
+
+- **Log a payment in seconds.** Type an amount ("450", "1,200", "1.5k"), pick a category, add a note if you like, and press Enter. The date defaults to today; "yesterday", "mon" or "5 nov" also work, and always mean the most recent one.
+- **Budget.** Set a monthly budget, plus optional limits per category, under **Budgets**. The top of the page shows what's left and how much that allows per day for the rest of the month. Over-budget categories turn red.
+- **Where it went** shows each category's share. **Every day** charts each day's spending. **Insights** names your biggest category, your daily average, the change against last month and your biggest single spend.
+- **This month** lists every payment and income. Hover a row to delete it; the toast offers Undo.
+- The currency symbol defaults to your region's and can be changed under Budgets.
+
+## Journal tab
+
+**Journal** keeps one entry per day.
+
+- **Write and pick a mood** (Awful to Great). It saves as you type. Each day offers a different prompt if you're stuck.
+- **That day** sits beside the entry: what you studied according to Stint, what was in the Planner, and what you spent.
+- **#tags** in your writing become chips you can click to find every day with that tag. Search finds any word.
+- **Mood calendar** colours each day of the month by mood; click a day to open it. **On this day** shows what you wrote a week, a month and a year ago.
+- Your streak counts days in a row with something written.
+
 ## Install and updates
 
 Download `CommandHub-win-Setup.exe` from the latest GitHub release and run it. It installs for your account only, so no admin rights are needed.
@@ -121,4 +141,6 @@ The board, saving, edit mode and the Add tile picker pick it up automatically.
 | `Services/` | Safe saving, themes, start with Windows, window effects, debounced save |
 | `Tiles/` | One folder per tile type, plus the registry |
 | `Views/` | The board, tile card, tile picker and settings page |
+| `Home/` | The After Hours header and shared page helpers |
+| `Study/`, `Planner/`, `Money/`, `Journal/` | One folder per sidebar tab: the page plus its pure logic (tested) |
 | `docs/superpowers/` | The design spec and build plan |

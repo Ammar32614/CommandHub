@@ -59,9 +59,32 @@ public partial class MainWindow : Window
                 System.Windows.Automation.AutomationProperties.SetName(_plannerNav, "Planner");
                 _plannerNav.Checked += (_, _) => OpenPlannerPage();
                 PageNav.Children.Add(_plannerNav);
+
+                PageNav.Children.Add(Extra("", "Money", () => new Money.MoneyPage()));
+                PageNav.Children.Add(Extra("", "Journal", () => new Journal.JournalPage()));
             }
         }
         if (PageNav.Children.Count > 0) ((RadioButton)PageNav.Children[0]).IsChecked = true;
+    }
+
+    /// <summary>A sidebar entry for a built-in tab (Money, Journal).</summary>
+    private RadioButton Extra(string icon, string name, Func<UIElement> create)
+    {
+        var item = new RadioButton
+        {
+            GroupName = "Nav",
+            Style = (Style)FindResource("NavItem"),
+            Content = NavContent(icon, name),
+            Margin = new Thickness(0, 0, 0, 2),
+        };
+        System.Windows.Automation.AutomationProperties.SetName(item, name);
+        item.Checked += (_, _) =>
+        {
+            HideSheet();
+            App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
+            PageHost.Content = create();
+        };
+        return item;
     }
 
     private static StackPanel NavContent(string icon, string name)
