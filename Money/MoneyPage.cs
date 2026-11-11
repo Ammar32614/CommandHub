@@ -60,7 +60,7 @@ public sealed class MoneyPage : UserControl
     public static Brush CategoryBrush(string category)
     {
         int i = Array.FindIndex(MoneyData.ExpenseCategories, c => c.Equals(category, StringComparison.OrdinalIgnoreCase));
-        if (i < 0) i = Math.Abs(StringComparer.OrdinalIgnoreCase.GetHashCode(category)) % Palette.Length;
+        if (i < 0) i = (int)((uint)StringComparer.OrdinalIgnoreCase.GetHashCode(category) % (uint)Palette.Length);
         return ColorBrush(Palette[i % Palette.Length]);
     }
 
@@ -500,7 +500,8 @@ public sealed class MoneyPage : UserControl
             }
             var totalValue = Read(total, "Monthly budget", out var okTotal);
             if (!okTotal) return;
-            var perCat = new Dictionary<string, decimal>();
+            // Keep limits on categories this sheet doesn't list (custom ones); replace only the built-in ones.
+            var perCat = Data.CategoryBudgets.Where(kv => !fields.Keys.Contains(kv.Key, StringComparer.OrdinalIgnoreCase)).ToDictionary(kv => kv.Key, kv => kv.Value);
             foreach (var (c, f) in fields)
             {
                 var v = Read(f, c, out var ok);
@@ -525,7 +526,11 @@ public sealed class MoneyPage : UserControl
         var scrim = new Grid();
         scrim.SetResourceReference(Panel.BackgroundProperty, "Scrim");
         scrim.MouseLeftButtonDown += (_, _) => Main?.HideSheet();
-        scrim.KeyDown += (_, e) => { if (e.Key == Key.Escape) Main?.HideSheet(); };
+        scrim.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape) Main?.HideSheet();
+            else if (e.Key == Key.Enter) { e.Handled = true; save.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent)); }
+        };
         scrim.Children.Add(card);
         Main?.ShowSheet(scrim);
         Dispatcher.BeginInvoke(() => total.Focus(), DispatcherPriority.Input);

@@ -32,6 +32,7 @@ public sealed class JournalPage : UserControl
     private readonly TextBox _search = Field("Search your journal, or #tag", "", "Search journal");
     private readonly StackPanel _results = new();
     private bool _loadingText;
+    private DateOnly? _textDay; // the day whose text (and undo history) the writing box holds
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
     private static List<JournalEntry> Entries => App.Data.Journal;
@@ -61,7 +62,9 @@ public sealed class JournalPage : UserControl
         _midnight.Tick += (_, _) =>
         {
             if (Today == _renderedFor) return;
-            if (_day == _renderedFor) _day = Today; // still on "today" when the date changed: follow it
+            // Mid-sentence at midnight: leave the page alone until the writing box loses focus.
+            if (_text.IsKeyboardFocusWithin) return;
+            if (_day == _renderedFor) { Tidy(); _day = Today; } // still on "today" when the date changed: follow it
             Render();
         };
         Loaded += (_, _) =>
@@ -237,7 +240,15 @@ public sealed class JournalPage : UserControl
         (_text.Parent as Panel)?.Children.Remove(_text);
         _loadingText = true;
         var want = entry?.Text ?? "";
-        if (_text.Text != want) { _text.Text = want; _text.CaretIndex = want.Length; }
+        if (_text.Text != want || _textDay != _day)
+        {
+            // Another day's text: start a fresh undo history, or Ctrl+Z would bring the old day's words into this one.
+            _text.IsUndoEnabled = false;
+            _text.Text = want;
+            _text.IsUndoEnabled = true;
+            _textDay = _day;
+            _text.CaretIndex = want.Length;
+        }
         _loadingText = false;
         stack.Children.Add(_text);
 

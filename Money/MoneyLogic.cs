@@ -10,19 +10,24 @@ public record BudgetState(decimal Budget, decimal Spent, decimal Left, int DaysL
 /// <summary>Pure money rules: parsing typed amounts, month totals, budgets and insights.</summary>
 public static partial class MoneyLogic
 {
-    [GeneratedRegex(@"^[^\d\-]*?([\d,]*\.?\d+)\s*(k)?$", RegexOptions.IgnoreCase)]
+    // A bare ".5" is a fraction, but after a currency symbol ("Rs.450") the dot belongs to the symbol.
+    [GeneratedRegex(@"^(?:\.(\d+)|[^\d\-]*?(\d[\d,]*(?:\.\d+)?))\s*(k)?$", RegexOptions.IgnoreCase)]
     private static partial Regex AmountPattern();
 
-    /// <summary>"1200", "1,200", "1.5k", "Rs 450". Null when it isn't a positive amount.</summary>
+    /// <summary>The largest single amount accepted (a trillion), so totals can never overflow.</summary>
+    public const decimal MaxAmount = 1_000_000_000_000m;
+
+    /// <summary>"1200", "1,200", "1.5k", "Rs 450", "Rs.450". Null when it isn't a positive amount.</summary>
     public static decimal? ParseAmount(string text)
     {
         var t = (text ?? "").Trim();
         if (t.Length == 0 || t.Contains('-')) return null;
         var m = AmountPattern().Match(t);
         if (!m.Success) return null;
-        if (!decimal.TryParse(m.Groups[1].Value.Replace(",", ""), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var value)) return null;
-        if (m.Groups[2].Success) value *= 1000;
-        return value > 0 ? Math.Round(value, 2) : null;
+        var digits = m.Groups[1].Success ? "0." + m.Groups[1].Value : m.Groups[2].Value.Replace(",", "");
+        if (digits.Length > 20 || !decimal.TryParse(digits, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var value)) return null;
+        if (m.Groups[3].Success) { if (value > MaxAmount) return null; value *= 1000; }
+        return value > 0 && value <= MaxAmount ? Math.Round(value, 2) : null;
     }
 
     private static readonly string[] Weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -43,7 +48,7 @@ public static partial class MoneyLogic
         }
         var inv = CultureInfo.InvariantCulture;
         if (DateOnly.TryParseExact(t, ["yyyy-MM-dd", "yyyy-M-d", "d MMM yyyy", "d MMMM yyyy", "MMM d yyyy", "MMMM d yyyy"], inv, DateTimeStyles.None, out var full))
-            return full <= today ? full : null;
+            return full <= today && full.Year >= 1900 ? full : null;
         foreach (var year in new[] { today.Year, today.Year - 1 })
             if (DateOnly.TryParseExact($"{t} {year}", ["d MMM yyyy", "d MMMM yyyy", "MMM d yyyy", "MMMM d yyyy"], inv, DateTimeStyles.None, out var d) && d <= today)
                 return d;
@@ -92,13 +97,20 @@ public static partial class MoneyLogic
         return days;
     }
 
-    /// <summary>Percent change in spending against the month before; null when that month had none.</summary>
-    public static int? ChangeVsLastMonth(IEnumerable<Transaction> all, int year, int month)
+    /// <summary>
+    /// Percent change in spending against the month before; null when that month had none.
+    /// While <paramref name="today"/> is inside the month, it compares like for like: the same days of last month so far.
+    /// </summary>
+    public static int? ChangeVsLastMonth(IEnumerable<Transaction> all, int year, int month, DateOnly? today = null)
     {
+        if (year <= 1 && month <= 1) return null;
         var list = all.ToList();
         var prev = new DateOnly(year, month, 1).AddMonths(-1);
         var now = Month(list, year, month).Spent;
-        var before = Month(list, prev.Year, prev.Month).Spent;
+        int upTo = today is { } t && t.Year == year && t.Month == month
+            ? Math.Min(t.Day, DateTime.DaysInMonth(prev.Year, prev.Month))
+            : 31;
+        var before = Month(list, prev.Year, prev.Month).Expenses.Where(x => x.Date.Day <= upTo).Sum(x => x.Amount);
         return before == 0 ? null : (int)Math.Round((now - before) * 100 / before, MidpointRounding.AwayFromZero);
     }
 
@@ -113,8 +125,11 @@ public static partial class MoneyLogic
         bool current = today.Year == year && today.Month == month;
         int days = current ? today.Day : DateTime.DaysInMonth(year, month);
         lines.Add($"You've averaged {Format(Math.Round(m.Spent / days, 0), symbol)} a day.");
-        if (ChangeVsLastMonth(list, year, month) is { } change)
-            lines.Add(change >= 0 ? $"That's {change}% more than last month{(current ? " so far" : "")}." : $"That's {-change}% less than last month.");
+        if (ChangeVsLastMonth(list, year, month, today) is { } change)
+        {
+            var than = current ? $"the same {today.Day} {(today.Day == 1 ? "day" : "days")} last month" : "last month";
+            lines.Add(change >= 0 ? $"That's {change}% more than {than}." : $"That's {-change}% less than {than}.");
+        }
         var biggest = m.Expenses.MaxBy(t => t.Amount)!;
         lines.Add($"Biggest single spend: {Format(biggest.Amount, symbol)} on {(biggest.Note.Length > 0 ? biggest.Note : biggest.Category)} ({biggest.Date:ddd d MMM}).");
         return lines;

@@ -100,6 +100,39 @@ public class MoneyLogicTests
         Assert.Contains(lines, l => l.Contains("Food") && l.Contains("75%"));
     }
 
+    [Theory]
+    [InlineData("Rs.450", 450)]
+    [InlineData("Rs.1,200", 1200)]
+    [InlineData("rs. 12.5", 12.5)]
+    [InlineData(".5", 0.5)]
+    public void ParseAmount_DotAfterCurrency_IsNotADecimalPoint(string text, decimal expected) =>
+        Assert.Equal(expected, MoneyLogic.ParseAmount(text));
+
+    [Theory]
+    [InlineData("99999999999999999999999999k")]
+    [InlineData("10000000000000")]
+    public void ParseAmount_AbsurdlyLarge_IsNull(string text) => Assert.Null(MoneyLogic.ParseAmount(text));
+
+    [Fact]
+    public void ChangeVsLastMonth_CurrentMonth_ComparesSameDaysOfLastMonth()
+    {
+        // 3 Nov: 2,000 so far vs 1,000 over 1–3 Oct (the other 29,000 of October came later).
+        var t = new List<Transaction>
+        {
+            new() { Amount = 2000, Category = "Food", Date = new(2026, 11, 2) },
+            new() { Amount = 1000, Category = "Food", Date = new(2026, 10, 3) },
+            new() { Amount = 29000, Category = "Food", Date = new(2026, 10, 20) },
+        };
+        Assert.Equal(100, MoneyLogic.ChangeVsLastMonth(t, 2026, 11, new DateOnly(2026, 11, 3)));
+    }
+
+    [Fact]
+    public void ChangeVsLastMonth_YearOne_IsNull() =>
+        Assert.Null(MoneyLogic.ChangeVsLastMonth([new() { Amount = 5, Date = new(1, 1, 1) }], 1, 1));
+
+    [Fact]
+    public void ParsePastDate_AncientDate_IsNull() => Assert.Null(MoneyLogic.ParsePastDate("0001-01-05", Today));
+
     // Today is Wednesday 11 Nov 2026. Payments are logged after the fact, so dates read backwards.
     [Theory]
     [InlineData("", "2026-11-11")]

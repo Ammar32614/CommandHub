@@ -144,13 +144,14 @@ public class DataStore(string path)
 
         data.Money ??= new();
         if (string.IsNullOrWhiteSpace(data.Money.Currency)) data.Money.Currency = Money.MoneyData.DefaultCurrency();
-        data.Money.CategoryBudgets ??= [];
+        data.Money.CategoryBudgets = (data.Money.CategoryBudgets ?? []).ToDictionary(kv => kv.Key, kv => Math.Clamp(kv.Value, 0, Money.MoneyLogic.MaxAmount));
+        data.Money.MonthlyBudget = Math.Clamp(data.Money.MonthlyBudget, 0, Money.MoneyLogic.MaxAmount);
         data.Money.Transactions = (data.Money.Transactions ?? []).Where(t => t is not null).ToList();
         foreach (var t in data.Money.Transactions)
         {
             if (string.IsNullOrWhiteSpace(t.Category)) t.Category = "Other";
             t.Note ??= "";
-            t.Amount = Math.Abs(t.Amount);
+            t.Amount = Math.Min(Math.Abs(t.Amount), Money.MoneyLogic.MaxAmount);
             if (t.Id == Guid.Empty) t.Id = Guid.NewGuid();
         }
 
