@@ -162,9 +162,8 @@ dotnet test CommandHub.Tests
 
 - If the file is corrupt, it's backed up as `data.corrupt-<time>.json` before the app starts fresh.
 - If the file is locked by another program, or was written by a newer version, the app won't overwrite it.
-
-- Each manual **Back up now** (Settings) goes to `backupsdata-manual-<time>.json`.
-- Add-ons keep their files in `addons` and their data in `addon-data`, next to `data.json`.
+- Each manual **Back up now** (Settings) goes to `backups\data-manual-<time>.json`.
+- Add-ons keep their files in `addons\` and their data in `addon-data\`, next to `data.json`.
 
 To try the app against a throwaway file, set `COMMANDHUB_DATA` to another path.
 
