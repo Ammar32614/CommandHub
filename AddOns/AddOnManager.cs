@@ -24,6 +24,7 @@ public static class AddOnManager
     private static List<CatalogEntry>? _catalog;
     private static string _catalogError = "";
     private static bool _fetching;
+    private static DateTime _fetchedUtc;
     private static readonly HashSet<string> Busy = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> NeedsRestart = new(StringComparer.OrdinalIgnoreCase);
     private static Panel? _section;
@@ -38,6 +39,20 @@ public static class AddOnManager
         var files = Files;
         files.CleanUp();
         foreach (var addOn in files.Installed()) TryLoad(addOn);
+
+        // With automatic updates on, look for add-on updates shortly after starting and mention them.
+        if (Loaded.Count == 0) return;
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        timer.Tick += async (_, _) =>
+        {
+            timer.Stop();
+            if (!App.Data.Settings.AutoUpdate) return;
+            await FetchCatalog();
+            var updates = (_catalog ?? []).Where(e => Loaded.TryGetValue(e.Id, out var r) && AddOnCatalog.IsNewer(e.Version, r.Manifest.Version)).Select(e => e.Name).ToList();
+            if (updates.Count > 0)
+                Main?.ShowNotice($"An update for {string.Join(" and ", updates)} is ready. Install it from Settings › Add-ons.");
+        };
+        timer.Start();
     }
 
     private static bool TryLoad(InstalledAddOn installed)
@@ -90,6 +105,7 @@ public static class AddOnManager
                 .Where(e => AddOnCatalog.IsCompatible(e, App.Updater.CurrentVersion))
                 .Select(e => e with { Url = AddOnCatalog.ResolveUrl(source, e.Url) })
                 .ToList();
+            _fetchedUtc = DateTime.UtcNow;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or UnauthorizedAccessException)
         {
@@ -157,7 +173,8 @@ public static class AddOnManager
         _section = host;
         host.Unloaded += (_, _) => { if (_section == host) _section = null; };
         Refresh();
-        if (_catalog is null && !_fetching) _ = FetchCatalog();
+        // Look again each time Settings opens (at most every few minutes), so new add-ons and updates show up.
+        if (!_fetching && (_catalog is null || DateTime.UtcNow - _fetchedUtc > TimeSpan.FromMinutes(5))) _ = FetchCatalog();
     }
 
     private static void Refresh()

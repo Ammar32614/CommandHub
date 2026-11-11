@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- An add-on: built on its own, zipped with manifest.json, and installed from Command hub's Settings. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>media</AssemblyName>
+    <RootNamespace>CommandHub.AddOn.Media</RootNamespace>
+    <Version>1.0.0</Version>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Command hub itself is already loaded when the add-on runs: compile against it, never ship a copy. -->
+    <ProjectReference Include="..\..\CommandHub.csproj" Private="false" ExcludeAssets="runtime" />
+    <None Update="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

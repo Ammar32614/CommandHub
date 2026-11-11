@@ -1,0 +1,11 @@
+{
+  "id": "media",
+  "name": "Media",
+  "version": "1.0.0",
+  "api": 1,
+  "minHost": "1.2.0",
+  "entry": "media.dll",
+  "icon": "\uE8B2",
+  "blurb": "Track the anime, shows and movies you watch, and keep a watchlist.",
+  "description": "Anime from AniList (linked to MyAnimeList, and you can import your MyAnimeList list), movies and shows from IMDb, new episodes from TVmaze. Progress, ratings, what airs this week, stats and a pick for tonight."
+}
