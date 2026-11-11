@@ -24,6 +24,8 @@ public sealed class PlanEditor : UserControl
     private readonly UniformGrid _calendarDays = new() { Columns = 7 };
     private readonly TextBlock _calendarTitle = T("", 12, "Text", FontWeights.SemiBold);
     private readonly CheckBox _weekly, _done;
+    private readonly TextBlock _startHint = T("", 10, "Muted"), _endHint = T("", 10, "Muted");
+    private readonly DockPanel _doneRow = new() { Margin = new Thickness(0, 10, 0, 0) };
     private readonly StackPanel _untilRow = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
     private readonly WrapPanel _courseChips = new();
     private PlanKind _kind;
@@ -64,9 +66,14 @@ public sealed class PlanEditor : UserControl
         Content = Build();
         _date.TextChanged += (_, _) => { UpdateDateHint(); };
         _course.TextChanged += (_, _) => BuildCourseChips();
-        _weekly.Checked += (_, _) => _untilRow.Visibility = Visibility.Visible;
-        _weekly.Unchecked += (_, _) => _untilRow.Visibility = Visibility.Collapsed;
-        _untilRow.Visibility = _weekly.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        // Weekly items show "until" and hide "Done": ticking a repeating class done would hide every week of it.
+        _weekly.Checked += (_, _) => UpdateRepeatRows();
+        _weekly.Unchecked += (_, _) => UpdateRepeatRows();
+        UpdateRepeatRows();
+        _start.TextChanged += (_, _) => ShowTimeHint(_start, _startHint);
+        _end.TextChanged += (_, _) => ShowTimeHint(_end, _endHint);
+        ShowTimeHint(_start, _startHint);
+        ShowTimeHint(_end, _endHint);
         UpdateDateHint();
         BuildCourseChips();
         BuildCalendar();
@@ -126,9 +133,11 @@ public sealed class PlanEditor : UserControl
         var startBox = new StackPanel();
         startBox.Children.Add(Small("START"));
         startBox.Children.Add(_start);
+        startBox.Children.Add(_startHint);
         var endBox = new StackPanel();
         endBox.Children.Add(Small("END"));
         endBox.Children.Add(_end);
+        endBox.Children.Add(_endHint);
         Grid.SetColumn(endBox, 2);
         times.Children.Add(startBox);
         times.Children.Add(endBox);
@@ -141,11 +150,10 @@ public sealed class PlanEditor : UserControl
         _until.Width = 170;
         _untilRow.Children.Add(_until);
         left.Children.Add(_untilRow);
-        var doneRow = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
         DockPanel.SetDock(_done, Dock.Right);
-        doneRow.Children.Add(_done);
-        doneRow.Children.Add(T("Done", 12));
-        left.Children.Add(doneRow);
+        _doneRow.Children.Add(_done);
+        _doneRow.Children.Add(T("Done", 12));
+        left.Children.Add(_doneRow);
         dateGrid.Children.Add(left);
         var cal = Calendar();
         Grid.SetColumn(cal, 2);
@@ -182,7 +190,7 @@ public sealed class PlanEditor : UserControl
             {
                 if (_confirmDelete) { App.Data.Planner.Remove(_editing); App.SaveNow(); Closed?.Invoke(true); return; }
                 _confirmDelete = true;
-                delete!.Content = "Delete? Click again";
+                delete!.Content = _editing.Weekly ? "Delete every week? Click again" : "Delete? Click again";
                 delete.SetResourceReference(ForegroundProperty, "Danger");
             });
             delete.HorizontalAlignment = HorizontalAlignment.Left;
@@ -217,6 +225,24 @@ public sealed class PlanEditor : UserControl
     {
         e.Margin = new Thickness(e.Margin.Left, top, e.Margin.Right, e.Margin.Bottom);
         return e;
+    }
+
+    private void UpdateRepeatRows()
+    {
+        bool weekly = _weekly.IsChecked == true;
+        _untilRow.Visibility = weekly ? Visibility.Visible : Visibility.Collapsed;
+        _doneRow.Visibility = weekly ? Visibility.Collapsed : Visibility.Visible;
+        if (weekly) _done.IsChecked = false;
+    }
+
+    private static void ShowTimeHint(TextBox box, TextBlock hint)
+    {
+        var (text, problem) = PlannerLogic.TimeHint(box.Text);
+        hint.Text = text;
+        hint.TextWrapping = TextWrapping.Wrap;
+        hint.TextTrimming = TextTrimming.None;
+        hint.Margin = new Thickness(2, text.Length > 0 ? 4 : 0, 0, 0);
+        hint.SetResourceReference(TextBlock.ForegroundProperty, problem ? "Danger" : "Muted");
     }
 
     // ---------------- Date ----------------

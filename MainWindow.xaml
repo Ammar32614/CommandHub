@@ -27,7 +27,7 @@
 
         <!-- Brand -->
         <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="22,0,0,8">
-            <Image Source="pack://application:,,,/Assets/commandhub.ico" Width="18" Height="18" Margin="0,0,9,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+            <Image Source="pack://application:,,,/Assets/commandhub.png" Width="20" Height="20" Margin="0,0,9,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
             <TextBlock Text="COMMAND HUB" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
         </StackPanel>
 

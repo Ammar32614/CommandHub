@@ -150,6 +150,21 @@ public static partial class PlannerLogic
         return time is not null;
     }
 
+    /// <summary>
+    /// What to show under a time box: how the text was read, a nudge when a bare small hour
+    /// ("2") probably meant the afternoon, or a problem when it isn't a time.
+    /// </summary>
+    public static (string Text, bool Problem) TimeHint(string text)
+    {
+        var t = (text ?? "").Trim();
+        if (t.Length == 0) return ("", false);
+        if (ParseTime(t) is not { } time) return ("Try \"2pm\" or 14:00", true);
+        var read = $"Read as {FormatTime(time)}";
+        if (t.All(char.IsDigit) && time.Hour is >= 1 and <= 7 && time.Minute == 0)
+            return ($"{read}. Type {time.Hour}pm for the {(time.Hour <= 5 ? "afternoon" : "evening")}.", false);
+        return (read, false);
+    }
+
     public static string FormatTime(TimeOnly t) => t.ToString(t.Minute == 0 ? "h tt" : "h:mm tt", CultureInfo.InvariantCulture).ToLowerInvariant();
 
     /// <summary>The message to show, or null when the item can be saved.</summary>

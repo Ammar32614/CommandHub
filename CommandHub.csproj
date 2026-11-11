@@ -17,6 +17,7 @@
   <ItemGroup>
     <PackageReference Include="Velopack" Version="1.2.161" />
     <Resource Include="Assets\commandhub.ico" />
+    <Resource Include="Assets\commandhub.png" />
   </ItemGroup>
 
   <!-- Custom Main (in App.xaml.cs) so Velopack runs before WPF starts. -->

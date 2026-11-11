@@ -226,3 +226,17 @@ public class PlannerUpNextNowTests
         Assert.Equal(3, next.Count);
     }
 }
+
+public class PlannerTimeHintTests
+{
+    [Theory]
+    [InlineData("", "", false)]
+    [InlineData("2pm", "Read as 2 pm", false)]
+    [InlineData("14:30", "Read as 2:30 pm", false)]
+    [InlineData("2", "Read as 2 am. Type 2pm for the afternoon.", false)]
+    [InlineData("7", "Read as 7 am. Type 7pm for the evening.", false)]
+    [InlineData("9", "Read as 9 am", false)]
+    [InlineData("25:00", "Try \"2pm\" or 14:00", true)]
+    public void TimeHint_ExplainsHowATimeWasRead(string text, string hint, bool problem) =>
+        Assert.Equal((hint, problem), PlannerLogic.TimeHint(text));
+}
