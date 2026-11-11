@@ -67,6 +67,8 @@ public sealed partial class Store(HttpClient http)
             + "&extensions=" + Uri.EscapeDataString("{\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"" + Hashes[operation] + "\"}}");
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("x-psn-store-locale-override", region.Locale);
+        // The API asks GET callers to name the operation (its guard against cross-site requests).
+        request.Headers.Add("x-apollo-operation-name", operation);
         request.Headers.Accept.ParseAdd("application/json");
         using var response = await http.SendAsync(request, ct);
         var text = await response.Content.ReadAsStringAsync(ct);
