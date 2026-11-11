@@ -29,6 +29,9 @@ public static class AddOnManager
     private static readonly HashSet<string> NeedsRestart = new(StringComparer.OrdinalIgnoreCase);
     private static Panel? _section;
 
+    /// <summary>Set when loading add-ons failed outright at startup; shown in Settings.</summary>
+    public static string StartupError { get; set; } = "";
+
     private static AddOnFiles Files => new(AddOnFiles.DefaultRoot(App.Store.FilePath));
     private static string DataFolderFor(string id) => Path.Combine(Path.GetDirectoryName(App.Store.FilePath)!, "addon-data", id);
     private static MainWindow? Main => Application.Current.MainWindow as MainWindow;
@@ -60,6 +63,8 @@ public static class AddOnManager
         var m = installed.Manifest;
         try
         {
+            if (m.Api != AddOnApi.Version)
+                throw new AddOnException("it was made for a different version of Command hub. Update it below.");
             var context = new AddOnLoadContext(installed.EntryPath);
             var assembly = context.LoadFromAssemblyPath(installed.EntryPath);
             var type = assembly.GetExportedTypes().FirstOrDefault(t => typeof(IAddOn).IsAssignableFrom(t) && !t.IsAbstract && t.GetConstructor(Type.EmptyTypes) != null)
@@ -79,6 +84,23 @@ public static class AddOnManager
             LoadErrors[m.Id] = ex is AddOnException ? ex.Message : $"{ex.GetType().Name}: {ex.Message}";
             return false;
         }
+    }
+
+    /// <summary>The add-on whose code threw this exception (anywhere in its stack, or its inner exceptions), or null.</summary>
+    public static string? AddOnNameFor(Exception ex)
+    {
+        for (var e = ex; e is not null; e = e.InnerException)
+        {
+            var frames = new System.Diagnostics.StackTrace(e, false).GetFrames();
+            foreach (var f in frames)
+            {
+                var asm = f.GetMethod()?.DeclaringType?.Assembly;
+                if (asm is null || AssemblyLoadContext.GetLoadContext(asm) is not AddOnLoadContext) continue;
+                var entry = Loaded.Values.FirstOrDefault(r => r.AddOn.GetType().Assembly == asm);
+                return entry?.Manifest.Name ?? asm.GetName().Name ?? "An add-on";
+            }
+        }
+        return null;
     }
 
     public static string? BlurbFor(string tabName) =>
@@ -141,6 +163,10 @@ public static class AddOnManager
             }
         }
         catch (AddOnException ex) { Main?.ShowNotice(ex.Message); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or System.Security.SecurityException)
+        {
+            Main?.ShowNotice("Couldn't install the add-on: " + ex.Message);
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or UnauthorizedAccessException)
         {
             Main?.ShowNotice("Couldn't download the add-on. Check your connection and try again.");
@@ -189,6 +215,7 @@ public static class AddOnManager
         var intro = new TextBlock { Text = "Optional tabs for specific interests. Install only what you want; each adds a tab to the sidebar.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10) };
         intro.SetResourceReference(FrameworkElement.StyleProperty, "Caption");
         host.Children.Add(intro);
+        if (StartupError.Length > 0) host.Children.Add(T("Add-ons couldn't be loaded at startup: " + StartupError, 12, "Danger", wrap: true));
 
         var list = new StackPanel();
         if (NeedsRestart.Count > 0)
@@ -325,6 +352,7 @@ internal sealed class AddOnLoadContext(string mainPath) : AssemblyLoadContext(Pa
         // Shared framework assemblies that just haven't been loaded yet also come from the default context.
         try { var shared = Default.LoadFromAssemblyName(name); if (shared != null) return null; }
         catch (FileNotFoundException) { }
+        catch (FileLoadException) { }   // a version Command hub doesn't have: use the add-on's own copy if it brought one
         var local = Path.Combine(_folder, name.Name + ".dll");
         return File.Exists(local) ? LoadFromAssemblyPath(local) : null;
     }

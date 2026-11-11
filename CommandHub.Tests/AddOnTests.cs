@@ -159,4 +159,21 @@ public class AddOnFilesTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_root, "half"));
         Assert.Empty(new AddOnFiles(_root).Installed());
     }
+
+    [Fact]
+    public void HostData_LockedFile_IsNeverOverwritten_AndSavesKeepThePrevious()
+    {
+        var host = new AddOnHost(Path.Combine(_root, "data"));
+        host.Save("list", new List<string> { "keep me" });
+        host.Save("list", new List<string> { "keep me", "and me" });
+        Assert.True(File.Exists(Path.Combine(_root, "data", "list.json.previous")));
+
+        var path = Path.Combine(_root, "data", "list.json");
+        List<string> loaded;
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None)) // a backup tool has it open
+            loaded = host.Load<List<string>>("list");
+        Assert.Empty(loaded);
+        host.Save("list", loaded); // the add-on saves its "empty" list…
+        Assert.Contains("and me", File.ReadAllText(path)); // …but the real one is untouched
+    }
 }

@@ -34,7 +34,9 @@ public sealed class Library(IAddOnHost host)
 
     public async Task<MediaItem> Add(Found found, WatchStatus status)
     {
-        if (Find(found.Key) is { } existing) return existing;
+        // Already there, perhaps imported from MyAnimeList under another key.
+        var existing = Find(found.Key) ?? (found.MalId is { } mal ? Data.Items.FirstOrDefault(i => i.MalId == mal) : null);
+        if (existing is not null) return existing;
         var item = MediaLogic.FromFound(found);
         MediaLogic.SetStatus(item, status, DateTime.UtcNow);
         Data.Items.Insert(0, item);
@@ -79,6 +81,20 @@ public sealed class Library(IAddOnHost host)
         try
         {
             var follow = Data.Items.Where(i => i.Status is WatchStatus.Watching or WatchStatus.PlanToWatch or WatchStatus.OnHold).ToList();
+            // Titles imported while AniList was unreachable: fill in their AniList details now.
+            var bare = Data.Items.Where(i => i.AniListId is null && i.MalId is not null).ToList();
+            foreach (var chunk in bare.Chunk(50))
+            {
+                var byMal = (await Sources.AnimeByMalIds(chunk.Select(i => i.MalId!.Value).ToList())).Where(f => f.MalId is not null).ToDictionary(f => f.MalId!.Value);
+                foreach (var i in chunk)
+                {
+                    if (!byMal.TryGetValue(i.MalId!.Value, out var f)) continue;
+                    i.AniListId = f.AniListId;
+                    if (i.Image.Length == 0) i.Image = f.Image;
+                    i.TotalEpisodes ??= f.Episodes;
+                    i.Minutes ??= f.Minutes;
+                }
+            }
             var anime = follow.Where(i => i.AniListId is not null).ToList();
             foreach (var chunk in anime.Chunk(50))
             {
@@ -97,7 +113,7 @@ public sealed class Library(IAddOnHost host)
             foreach (var show in follow.Where(i => i.Kind == MediaKind.Show)) await RefreshShow(show);
             Data.LastCheckUtc = DateTime.UtcNow;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { } // try again tomorrow
         finally
         {
             Refreshing = false;

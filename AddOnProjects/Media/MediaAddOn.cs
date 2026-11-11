@@ -25,7 +25,8 @@ public sealed class MediaAddOn : IAddOn
     {
         if (_library is null || _library.Data.Items.Count == 0) return;
         if (_library.Data.LastCheckUtc is { } last && DateTime.UtcNow - last < TimeSpan.FromHours(20)) return;
-        await _library.Refresh();
+        try { await _library.Refresh(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { } // never let a background refresh take Command hub down
     }
 
     public UIElement CreatePage() => new MediaPage(_library!);

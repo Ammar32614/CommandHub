@@ -93,7 +93,7 @@ public sealed class DetailSheet(Tracker tracker, string productId, Region foundI
     {
         var s = new StackPanel();
         var head = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
-        var existing = tracker.Data.Wishlist.FirstOrDefault(w => w.ConceptId == concept.Id && w.Label.Equals(edition.Label, StringComparison.OrdinalIgnoreCase));
+        var existing = tracker.Data.Wishlist.FirstOrDefault(w => w.ConceptId == concept.Id && WishLogic.LabelKey(w.Label) == WishLogic.LabelKey(edition.Label));
         var action = existing is null
             ? Styled("Add to wishlist", "AccentButton", (_, _) => { tracker.Add(concept, edition, _everywhere!); Render(); }, new Thickness(14, 5, 14, 5))
             : Styled("Remove from wishlist", "GhostButton", (_, _) => { tracker.Remove(existing); Render(); }, new Thickness(12, 5, 12, 5));
@@ -111,7 +111,7 @@ public sealed class DetailSheet(Tracker tracker, string productId, Region foundI
         // One row per region.
         var rows = Region.All.Select(r =>
         {
-            var match = _everywhere!.GetValueOrDefault(r.Code) is { } c ? WishLogic.Match(c.Editions, edition.Label, edition.Name) : null;
+            var match = _everywhere!.GetValueOrDefault(r.Code) is { } c ? WishLogic.Match(c.Editions, edition.Label, edition.Name, edition.Platforms.ToList()) : null;
             var offer = match?.Offer;
             var pkr = offer is null ? null : tracker.Pkr(offer.Sale, offer.Currency);
             return (Region: r, Edition: match, Offer: offer, Pkr: pkr);

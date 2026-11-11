@@ -28,6 +28,9 @@ public sealed class WishItem
     public Dictionary<string, RegionOffer> Offers { get; set; } = [];
     public List<PricePoint> History { get; set; } = [];
     public LowPoint? Lowest { get; set; }
+    /// <summary>The lowest price seen in each region, in that region's own money (so exchange rates can't fake a drop).</summary>
+    public Dictionary<string, long> LowestMinor { get; set; } = [];
+    public List<string> Platforms { get; set; } = [];
 }
 
 public sealed class RegionOffer
@@ -101,12 +104,14 @@ public static class WishLogic
         // Keep about a year per region.
         item.History.RemoveAll(h => h.Date < today.AddDays(-400));
 
+        // A new low means the store's own price fell below anything seen there before (rates can't fake one).
+        item.LowestMinor ??= [];
+        bool seen = item.LowestMinor.TryGetValue(region.Code, out var regionLow);
+        if (!seen || offer.SaleMinor < regionLow) item.LowestMinor[region.Code] = offer.SaleMinor;
+        if (seen && offer.SaleMinor < regionLow) events.Add(PriceEvent.NewLow);
+        // The lowest in rupees across regions is just for display.
         if (item.Lowest is null || value < item.Lowest.Pkr)
-        {
-            bool hadOne = item.Lowest is not null;
             item.Lowest = new LowPoint { Pkr = value, Region = region.Code, Date = today, Minor = offer.SaleMinor, Currency = offer.Currency };
-            if (hadOne) events.Add(PriceEvent.NewLow);
-        }
         if (item.TargetPkr is { } target && value <= target && (before is null || !before.Available
             || (Rates.ToPkr(before.SaleMinor / 100m, before.Currency, rates, manual) ?? decimal.MaxValue) > target))
             events.Add(PriceEvent.HitTarget);
@@ -122,13 +127,27 @@ public static class WishLogic
             Currency = offer.Currency, EndsUtc = offer.EndsUtc, SavingTag = offer.SavingTag, CheckedUtc = nowUtc,
         };
 
-    /// <summary>The same edition in another region's list of editions: same label, else same name.</summary>
-    public static Edition? Match(IEnumerable<Edition> editions, string label, string name)
+    /// <summary>
+    /// The same edition in another region's list: the same label (ignoring Sony's regional "SIEA"/"SIEE" ending),
+    /// else the same name on the same platforms.
+    /// </summary>
+    public static Edition? Match(IEnumerable<Edition> editions, string label, string name, IReadOnlyCollection<string>? platforms = null)
     {
         var list = editions.ToList();
-        return list.FirstOrDefault(e => e.Label.Equals(label, StringComparison.OrdinalIgnoreCase))
-               ?? list.FirstOrDefault(e => Normalize(e.Name) == Normalize(name));
+        var key = LabelKey(label);
+        return list.FirstOrDefault(e => LabelKey(e.Label) == key)
+               ?? list.FirstOrDefault(e => Normalize(e.Name) == Normalize(name) && SamePlatforms(e.Platforms, platforms));
     }
+
+    /// <summary>A label with the regional publisher ending removed ("TOTSGAME0000SIEA" and "...SIEE" are the same game).</summary>
+    public static string LabelKey(string label)
+    {
+        var l = (label ?? "").ToUpperInvariant();
+        return l.Length > 8 && System.Text.RegularExpressions.Regex.IsMatch(l, "SIE[A-Z]$") ? l[..^4] : l;
+    }
+
+    private static bool SamePlatforms(IReadOnlyList<string> a, IReadOnlyCollection<string>? b) =>
+        b is null || b.Count == 0 || a.Count == 0 || a.OrderBy(x => x).SequenceEqual(b.OrderBy(x => x), StringComparer.OrdinalIgnoreCase);
 
     private static string Normalize(string s) => new string((s ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 

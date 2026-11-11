@@ -189,6 +189,7 @@ public partial class SettingsPage : UserControl
             Directory.CreateDirectory(dir);
             var target = Path.Combine(dir, $"data-manual-{DateTime.Now:yyyyMMdd-HHmmss}.json");
             File.Copy(App.Store.FilePath, target, overwrite: false);
+            Services.Updates.BackupAddOnData(App.Store.FilePath, $"manual-{DateTime.Now:yyyyMMdd-HHmmss}");
             Main?.ShowNotice($"Backed up to {target}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

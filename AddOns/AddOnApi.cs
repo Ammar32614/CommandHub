@@ -59,29 +59,44 @@ public sealed class AddOnHost(string dataFolder) : IAddOnHost
     public string DataFolder { get; } = dataFolder;
     public HttpClient Http => Services.Net.Http;
 
+    /// <summary>Files that exist but couldn't be read (or kept aside) this run: never overwritten until the next start.</summary>
+    private readonly HashSet<string> _protected = new(StringComparer.OrdinalIgnoreCase);
+
     public T Load<T>(string name) where T : new()
     {
         var path = PathOf(name);
         if (!File.Exists(path)) return new T();
+        string text;
+        try { text = File.ReadAllText(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Locked by a backup tool or antivirus, say: run on an empty copy, but don't write over the real one.
+            _protected.Add(path);
+            Notify("An add-on's saved data couldn't be read right now, so its changes won't be saved until you restart Command hub.");
+            return new T();
+        }
         try
         {
-            return JsonSerializer.Deserialize<T>(File.ReadAllText(path), Json) ?? new T();
+            return JsonSerializer.Deserialize<T>(text, Json) ?? new T();
         }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
-            try { File.Copy(path, Path.Combine(DataFolder, $"{name}.corrupt-{DateTime.Now:yyyyMMddHHmmss}.json"), overwrite: true); }
-            catch (Exception copyEx) when (copyEx is IOException or UnauthorizedAccessException) { }
+            try { File.Copy(path, Path.Combine(DataFolder, $"{Path.GetFileNameWithoutExtension(path)}.corrupt-{DateTime.Now:yyyyMMddHHmmss}.json"), overwrite: true); }
+            catch (Exception copyEx) when (copyEx is IOException or UnauthorizedAccessException) { _protected.Add(path); }
             return new T();
         }
     }
 
     public void Save<T>(string name, T value)
     {
-        Directory.CreateDirectory(DataFolder);
         var path = PathOf(name);
+        if (_protected.Contains(path)) return;
+        Directory.CreateDirectory(DataFolder);
         var tmp = path + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(value, Json));
-        File.Move(tmp, path, overwrite: true);
+        // Keep the previous version too, one step back, in case something goes wrong.
+        if (File.Exists(path)) File.Replace(tmp, path, path + ".previous");
+        else File.Move(tmp, path);
     }
 
     public void Notify(string text) => (Application.Current?.MainWindow as MainWindow)?.ShowNotice(text);

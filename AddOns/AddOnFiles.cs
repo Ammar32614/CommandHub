@@ -130,15 +130,21 @@ public sealed class AddOnFiles(string root)
     public void CleanUp()
     {
         if (!Directory.Exists(Root)) return;
-        foreach (var dir in Directory.EnumerateDirectories(Root))
+        string[] dirs;
+        try { dirs = Directory.GetDirectories(Root); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; }
+        foreach (var dir in dirs)
         {
-            var id = Path.GetFileName(dir);
-            if (IsPendingRemoval(id)) { TryDelete(dir); continue; }
-            string? current = null;
-            try { current = File.Exists(CurrentFile(id)) ? File.ReadAllText(CurrentFile(id)).Trim() : null; }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
-            foreach (var version in Directory.EnumerateDirectories(dir))
-                if (!string.Equals(Path.GetFileName(version), current, StringComparison.OrdinalIgnoreCase)) TryDelete(version);
+            try
+            {
+                var id = Path.GetFileName(dir);
+                if (IsPendingRemoval(id)) { TryDelete(dir); continue; }
+                var current = File.Exists(CurrentFile(id)) ? File.ReadAllText(CurrentFile(id)).Trim() : null;
+                if (current is null) continue; // half-installed: leave it for Install to retry
+                foreach (var version in Directory.GetDirectories(dir))
+                    if (!string.Equals(Path.GetFileName(version), current, StringComparison.OrdinalIgnoreCase)) TryDelete(version);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // try again next start
         }
     }
 

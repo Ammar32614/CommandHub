@@ -39,4 +39,6 @@ jobs:
             gh release create addons --prerelease --latest=false --title "Command hub add-ons" `
               --notes "Add-ons for Command hub. Install them from Settings › Add-ons inside the app; there's nothing to download here by hand."
           }
-          gh release upload addons (Get-ChildItem dist/*).FullName --clobber
+          # The packages first, the catalogue last, so nobody is offered a package before it is there.
+          gh release upload addons (Get-ChildItem dist/*.zip).FullName --clobber
+          gh release upload addons dist/catalog.json --clobber

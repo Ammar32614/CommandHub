@@ -146,6 +146,32 @@ public class PlayStationWishlistTests
         Assert.Empty(WishLogic.Record(item, Region.TR, O(99900, 149900, "TRY"), R, null, Day.AddDays(2)));
     }
 
+    [Fact]
+    public void Record_ACheaperRateIsNotANewLow_OnlyACheaperPrice()
+    {
+        var item = new WishItem();
+        WishLogic.Record(item, Region.TR, O(149900, 149900, "TRY"), R, null, Day);
+        var weakerLira = new RateSet { PkrPerUsd = 280, TryPerUsd = 45, UahPerUsd = 40 };
+        Assert.Empty(WishLogic.Record(item, Region.TR, O(149900, 149900, "TRY"), weakerLira, null, Day.AddDays(1)));
+        Assert.Contains(PriceEvent.NewLow, WishLogic.Record(item, Region.TR, O(139900, 149900, "TRY"), weakerLira, null, Day.AddDays(2)));
+    }
+
+    [Fact]
+    public void Match_IgnoresSonysRegionSuffix_AndKeepsPlatformsApart()
+    {
+        var eu = new[]
+        {
+            new Edition("EP9000-PPSA21218_00-TOTSGAME0000SIEE", "Tales of the Shire", "", "", ["PS5"], null),
+        };
+        Assert.NotNull(WishLogic.Match(eu, "TOTSGAME0000SIEA", "Tales of the Shire", ["PS5"]));
+        var both = new[]
+        {
+            new Edition("EP1-CUSA1_00-GAMEPS4000000000", "Some Game", "", "", ["PS4"], null),
+            new Edition("EP1-PPSA1_00-GAMEPS5000000000", "Some Game", "", "", ["PS5"], null),
+        };
+        Assert.Equal("EP1-PPSA1_00-GAMEPS5000000000", WishLogic.Match(both, "NOPE", "Some Game", ["PS5"])!.ProductId);
+    }
+
     [Theory]
     [InlineData(null, true)]
     [InlineData(-21.0, true)]

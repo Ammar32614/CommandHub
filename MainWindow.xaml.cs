@@ -18,7 +18,11 @@ public partial class MainWindow : Window
             WindowEffects.ApplyRoundedCorners(this, dark: !App.Theme.IsLight);
             WindowEffects.KeepMaximizedInWorkArea(this);
         };
-        StateChanged += (_, _) => UpdateMaximized();
+        StateChanged += (_, _) =>
+        {
+            UpdateMaximized();
+            if (WindowState != WindowState.Minimized) _wasMaximized = WindowState == WindowState.Maximized;
+        };
         Closing += (_, _) => { RememberPlacement(); App.FlushSaves(); };
         RestorePlacement();
         ApplyTextScale();
@@ -39,17 +43,22 @@ public partial class MainWindow : Window
         if (!App.Data.Settings.RememberWindow) return;
         var screen = (SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
         if (Settings.SettingsLogic.FitOnScreen(App.Data.Settings.Window, screen) is not { } p) return;
+        if (!WindowEffects.TitleBarIsOnAMonitor(p.Left, p.Top, p.Width)) return; // that monitor is gone
         WindowStartupLocation = WindowStartupLocation.Manual;
         Left = p.Left; Top = p.Top; Width = p.Width; Height = p.Height;
-        if (p.Maximized) WindowState = WindowState.Maximized;
+        if (p.Maximized) { WindowState = WindowState.Maximized; _wasMaximized = true; }
     }
+
+    private bool _wasMaximized;
 
     private void RememberPlacement()
     {
         if (!App.Data.Settings.RememberWindow || WindowState == WindowState.Minimized && RestoreBounds.IsEmpty) return;
         var r = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
         if (r.IsEmpty) return;
-        App.Data.Settings.Window = new Models.WindowPlacement { Left = r.Left, Top = r.Top, Width = r.Width, Height = r.Height, Maximized = WindowState == WindowState.Maximized };
+        // Closed while minimised: remember whether it was maximised before that.
+        bool maximized = WindowState == WindowState.Minimized ? _wasMaximized : WindowState == WindowState.Maximized;
+        App.Data.Settings.Window = new Models.WindowPlacement { Left = r.Left, Top = r.Top, Width = r.Width, Height = r.Height, Maximized = maximized };
         App.SaveSoon(); // flushed right after, as the window closes
     }
 

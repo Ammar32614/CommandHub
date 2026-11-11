@@ -39,6 +39,7 @@ public partial class App : Application
         // One copy per data file, so two windows never fight over the same data.json. A second launch brings the first forward.
         // A copy using a different file (COMMANDHUB_DATA) is a separate instance.
         var instance = customData is null ? "CommandHub" : "CommandHub." + StableHash(Path.GetFullPath(customData).ToUpperInvariant());
+        WaitForPreviousCopy(e.Args);
         _instanceMutex = new Mutex(true, instance + ".SingleInstance", out bool first);
         _activateSignal = new EventWaitHandle(false, EventResetMode.AutoReset, instance + ".Activate");
         if (!first)
@@ -69,7 +70,9 @@ public partial class App : Application
         ApplyTheme(Data.Settings.Theme);
         Updater = new Updates();
 
-        AddOns.AddOnManager.Startup(); // before the window builds its sidebar
+        // Before the window builds its sidebar. Nothing an add-on folder does may stop Command hub starting.
+        try { AddOns.AddOnManager.Startup(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { AddOns.AddOnManager.StartupError = ex.Message; }
         MainWindow = new MainWindow();
         // Launched by "Start with Windows": stay out of the way until needed.
         if (e.Args.Contains(StartupManager.MinimizedFlag)) MainWindow.WindowState = WindowState.Minimized;
@@ -91,6 +94,14 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         FlushSaves();
+        if (_restart)
+        {
+            // Let go of "one copy at a time" first, or the new copy would just bring this one forward and quit.
+            try { _instanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
+            _instanceMutex?.Dispose();
+            _instanceMutex = null;
+            LaunchReplacement();
+        }
         _instanceMutex?.Dispose();
         base.OnExit(e);
     }
@@ -109,24 +120,43 @@ public partial class App : Application
     /// <summary>Asks every open tile editor to write its half-finished edits into tile content now.</summary>
     public static void CommitOpenEdits() => CommittingEdits?.Invoke();
 
-    /// <summary>Writes anything still waiting to be saved.</summary>
-    /// <summary>Saves, then starts a fresh copy and closes this one (to finish updating or removing add-ons).</summary>
+    private const string AfterFlag = "--after-pid";
+    private bool _restart;
+
+    /// <summary>
+    /// Closes normally (window closes, everything saves), then starts a fresh copy (to finish updating or removing add-ons).
+    /// The new copy waits for this one to be fully gone before it reads data or add-ons.
+    /// </summary>
     public static void Restart()
     {
-        FlushSaves();
-        var app = (App)Current;
-        // Let go of "one copy at a time" first, or the new copy would just bring this one forward and quit.
-        try { app._instanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
-        app._instanceMutex?.Dispose();
-        app._instanceMutex = null;
-        if (Environment.ProcessPath is { } exe)
-        {
-            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false }); }
-            catch (System.ComponentModel.Win32Exception) { }
-        }
+        ((App)Current)._restart = true;
         Current.Shutdown();
     }
 
+    private void LaunchReplacement()
+    {
+        if (Environment.ProcessPath is not { } exe) return;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false };
+            psi.ArgumentList.Add(AfterFlag);
+            psi.ArgumentList.Add(Environment.ProcessId.ToString());
+            System.Diagnostics.Process.Start(psi);
+        }
+        catch (System.ComponentModel.Win32Exception) { }
+    }
+
+    /// <summary>Started by <see cref="Restart"/>: wait (up to 20 s) for the old copy to exit first.</summary>
+    private static void WaitForPreviousCopy(string[] args)
+    {
+        int i = Array.IndexOf(args, AfterFlag);
+        if (i < 0 || i + 1 >= args.Length || !int.TryParse(args[i + 1], out var pid)) return;
+        try { using var old = System.Diagnostics.Process.GetProcessById(pid); old.WaitForExit(20000); }
+        catch (ArgumentException) { }          // already gone
+        catch (InvalidOperationException) { }
+    }
+
+    /// <summary>Writes anything still waiting to be saved.</summary>
     public static void FlushSaves()
     {
         CommitOpenEdits();
@@ -179,6 +209,13 @@ public partial class App : Application
             if (Data != null) Store!.Save(Data);
         }
         catch (Exception) { /* nothing more we can do */ }
+        // A problem inside an add-on must not close Command hub: say so and carry on.
+        if (AddOns.AddOnManager.AddOnNameFor(e.Exception) is { } addOn)
+        {
+            e.Handled = true;
+            (MainWindow as MainWindow)?.ShowNotice($"{addOn} hit a problem and skipped what it was doing ({e.Exception.GetType().Name}). Details are in {file}.");
+            return;
+        }
         MessageBox.Show($"Command hub hit an unexpected problem and needs to close. Your tiles are saved.\n\nDetails were written to:\n{file}",
             "Command hub", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;

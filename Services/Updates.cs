@@ -109,8 +109,30 @@ public sealed class Updates
     /// Copies data.json to backups\data-before-&lt;version&gt;-&lt;time&gt;.json, keeping the newest five.
     /// Returns the copy's path, or null if there was nothing to copy or copying failed.
     /// </summary>
+    /// <summary>Copies every add-on's data files to backups\addon-data-&lt;label&gt;\, keeping the newest five such copies. Never throws.</summary>
+    public static void BackupAddOnData(string dataPath, string label)
+    {
+        try
+        {
+            var source = Path.Combine(Path.GetDirectoryName(dataPath)!, "addon-data");
+            if (!Directory.Exists(source)) return;
+            var backups = Path.Combine(Path.GetDirectoryName(dataPath)!, "backups");
+            var target = Path.Combine(backups, $"addon-data-{label}");
+            foreach (var file in Directory.GetFiles(source, "*.json", SearchOption.AllDirectories))
+            {
+                var dest = Path.Combine(target, Path.GetRelativePath(source, file));
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                File.Copy(file, dest, overwrite: true);
+            }
+            foreach (var old in new DirectoryInfo(backups).GetDirectories("addon-data-*").OrderByDescending(d => d.CreationTimeUtc).Skip(5))
+                old.Delete(recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
     public static string? BackupBeforeUpdate(string dataPath, string version)
     {
+        BackupAddOnData(dataPath, $"before-{string.Concat(version.Where(char.IsLetterOrDigit))}-{DateTime.Now:yyyyMMddHHmmss}");
         try
         {
             if (!File.Exists(dataPath)) return null;

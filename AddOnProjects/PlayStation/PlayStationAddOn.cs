@@ -25,7 +25,8 @@ public sealed class PlayStationAddOn : IAddOn
     private async Task CheckIfDue()
     {
         if (_tracker is null || _tracker.Data.Wishlist.Count == 0 || !WishLogic.IsCheckDue(_tracker.Data.LastCheckUtc, DateTime.UtcNow)) return;
-        await _tracker.CheckAll();
+        try { await _tracker.CheckAll(); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { } // never let a background check take Command hub down
     }
 
     public UIElement CreatePage() => new PlayStationPage(_tracker!);

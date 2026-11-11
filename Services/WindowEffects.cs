@@ -60,9 +60,37 @@ public static class WindowEffects
             mmi.MaxSize.Y = info.Work.Bottom - info.Work.Top;
             // An auto-hidden taskbar needs a one-pixel gap to be able to pop up.
             if (info.Work.Bottom == info.Monitor.Bottom && info.Work.Top == info.Monitor.Top) mmi.MaxSize.Y -= 1;
+            // Handling the message stops WPF's own handler, which is what applies MinWidth/MinHeight: do that here.
+            var toDevice = PresentationSource.FromVisual(window)?.CompositionTarget?.TransformToDevice;
+            double sx = toDevice?.M11 ?? 1, sy = toDevice?.M22 ?? 1;
+            if (window.MinWidth > 0) mmi.MinTrackSize.X = (int)Math.Ceiling(window.MinWidth * sx);
+            if (window.MinHeight > 0) mmi.MinTrackSize.Y = (int)Math.Ceiling(window.MinHeight * sy);
             Marshal.StructureToPtr(mmi, l, true);
             handled = true;
             return IntPtr.Zero;
         });
+    }
+
+    [DllImport("user32.dll")] private static extern IntPtr MonitorFromRect(ref RECT rect, uint flags);
+    [DllImport("user32.dll")] private static extern uint GetDpiForSystem();
+
+    /// <summary>
+    /// True when the top strip of a window at this position (in device-independent pixels) is on some monitor,
+    /// so a window restored there can be grabbed and moved. Monitors of different sizes leave gaps inside the
+    /// overall screen area; this catches those too.
+    /// </summary>
+    public static bool TitleBarIsOnAMonitor(double left, double top, double width)
+    {
+        try
+        {
+            double scale = GetDpiForSystem() / 96.0;
+            var strip = new RECT
+            {
+                Left = (int)((left + 40) * scale), Top = (int)(top * scale),
+                Right = (int)((left + Math.Max(80, width - 140)) * scale), Bottom = (int)((top + 32) * scale),
+            };
+            return MonitorFromRect(ref strip, 0 /* MONITOR_DEFAULTTONULL */) != IntPtr.Zero;
+        }
+        catch (EntryPointNotFoundException) { return true; } // very old Windows: trust the simpler check
     }
 }

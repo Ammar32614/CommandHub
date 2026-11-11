@@ -6,6 +6,8 @@ $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 New-Item -ItemType Directory -Force $Out | Out-Null
 $Out = (Resolve-Path $Out).Path
+# Add-ons are built against this version of Command hub, so it is the oldest one they can run on.
+$hostVersion = ([xml](Get-Content (Join-Path (Split-Path $root -Parent) "CommandHub.csproj"))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 $entries = @()
 foreach ($dir in Get-ChildItem $root -Directory) {
     $manifestPath = Join-Path $dir.FullName "manifest.json"
@@ -25,7 +27,7 @@ foreach ($dir in Get-ChildItem $root -Directory) {
     Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip
     Remove-Item $build -Recurse -Force
     $entries += [ordered]@{
-        id = $m.id; name = $m.name; version = $m.version; api = $m.api; minHost = $m.minHost
+        id = $m.id; name = $m.name; version = $m.version; api = $m.api; minHost = $hostVersion
         blurb = $m.blurb; description = $m.description; icon = $m.icon
         url = (Split-Path $zip -Leaf); sha256 = (Get-FileHash $zip -Algorithm SHA256).Hash; size = (Get-Item $zip).Length
     }

@@ -84,10 +84,11 @@ public sealed class Sources(HttpClient http)
     public static List<Found> ParseAniListPage(JsonElement root)
     {
         var list = new List<Found>();
-        if (!root.TryGetProperty("data", out var data) || !data.TryGetProperty("Page", out var page) || !page.TryGetProperty("media", out var media) || media.ValueKind != JsonValueKind.Array) return list;
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object
+            || !data.TryGetProperty("Page", out var page) || page.ValueKind != JsonValueKind.Object || !page.TryGetProperty("media", out var media) || media.ValueKind != JsonValueKind.Array) return list;
         foreach (var m in media.EnumerateArray())
         {
-            if (!m.TryGetProperty("id", out var idEl) || !idEl.TryGetInt32(out var id)) continue;
+            if (m.ValueKind != JsonValueKind.Object || !m.TryGetProperty("id", out var idEl) || !idEl.TryGetInt32(out var id)) continue;
             var title = m.TryGetProperty("title", out var t) ? (Str(t, "english") is { Length: > 0 } en ? en : Str(t, "romaji")) : "";
             var romaji = m.TryGetProperty("title", out var t2) ? Str(t2, "romaji") : "";
             DateTime? next = null;
@@ -149,7 +150,7 @@ public sealed class Sources(HttpClient http)
                 if (emb.TryGetProperty("nextepisode", out var ne) && ne.ValueKind == JsonValueKind.Object)
                 {
                     if (DateTime.TryParse(Str(ne, "airstamp"), null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var a)) next = DateTime.SpecifyKind(a, DateTimeKind.Utc);
-                    nextNumber = aired + 1;
+                    nextNumber = Int(ne, "number") ?? aired + 1; // the episode number within its season
                 }
             }
             var image = r.TryGetProperty("image", out var im) && im.ValueKind == JsonValueKind.Object ? Str(im, "original") : "";

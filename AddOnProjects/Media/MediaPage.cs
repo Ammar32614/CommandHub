@@ -433,6 +433,10 @@ public sealed class MediaPage : UserControl
         }
         catch (InvalidDataException ex) { Main?.ShowNotice(ex.Message); }
         catch (IOException ex) { Main?.ShowNotice("Couldn't read that file: " + ex.Message); }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            Main?.ShowNotice("The import couldn't finish: " + ex.Message);
+        }
     }
 
     // ---------------- Details ----------------

@@ -35,7 +35,7 @@ public sealed class Tracker(IAddOnHost host)
     public decimal? Pkr(decimal amount, string currency) => Rates.ToPkr(amount, currency, Data.Rates, Data.ManualPkrPerUsd);
 
     public bool IsWished(string conceptId, string label) =>
-        Data.Wishlist.Any(w => w.ConceptId == conceptId && w.Label.Equals(label, StringComparison.OrdinalIgnoreCase));
+        Data.Wishlist.Any(w => w.ConceptId == conceptId && WishLogic.LabelKey(w.Label) == WishLogic.LabelKey(label));
 
     public async Task EnsureRates()
     {
@@ -67,12 +67,12 @@ public sealed class Tracker(IAddOnHost host)
         var item = new WishItem
         {
             ConceptId = concept.Id, Label = edition.Label, Name = edition.Name.Length > 0 ? edition.Name : concept.Name,
-            EditionName = edition.EditionName, Image = concept.Image,
+            EditionName = edition.EditionName, Image = concept.Image, Platforms = edition.Platforms.ToList(),
         };
         var today = DateOnly.FromDateTime(DateTime.Today);
         foreach (var region in Region.All)
         {
-            var match = everywhere.GetValueOrDefault(region.Code) is { } c ? WishLogic.Match(c.Editions, edition.Label, edition.Name) : null;
+            var match = everywhere.GetValueOrDefault(region.Code) is { } c ? WishLogic.Match(c.Editions, edition.Label, edition.Name, edition.Platforms.ToList()) : null;
             WishLogic.Record(item, region, WishLogic.FromOffer(match?.ProductId ?? "", match?.Offer, DateTime.UtcNow), Data.Rates, Data.ManualPkrPerUsd, today);
         }
         Data.Wishlist.Insert(0, item);
@@ -122,7 +122,7 @@ public sealed class Tracker(IAddOnHost host)
                     try { concept = await Store.ConceptById(item.ConceptId, region); }
                     catch (HttpRequestException) { continue; }   // try this region again tomorrow
                     catch (TaskCanceledException) { continue; }
-                    var edition = concept is null ? null : WishLogic.Match(concept.Editions, item.Label, item.Name);
+                    var edition = concept is null ? null : WishLogic.Match(concept.Editions, item.Label, item.Name, item.Platforms);
                     if (concept is not null && item.Image.Length == 0) item.Image = concept.Image;
                     var events = WishLogic.Record(item, region, WishLogic.FromOffer(edition?.ProductId ?? "", edition?.Offer, DateTime.UtcNow), Data.Rates, Data.ManualPkrPerUsd, today);
                     var price = item.Offers.TryGetValue(region.Code, out var o) && o.Available ? Pkr(o.SaleMinor / 100m, o.Currency) : null;
@@ -137,6 +137,7 @@ public sealed class Tracker(IAddOnHost host)
         }
         catch (StoreChangedException ex) { Data.LastError = ex.Message; }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { Data.LastError = "Couldn't reach the PlayStation Store. Trying again later."; }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { Data.LastError = "The price check hit a problem (" + ex.GetType().Name + "). It will try again later."; }
         finally
         {
             Checking = false;

@@ -78,7 +78,7 @@ public sealed partial class Store(HttpClient http)
         if (doc.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array && errors.GetArrayLength() > 0
             && (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind == JsonValueKind.Null))
         {
-            var message = errors[0].TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+            var message = errors[0].ValueKind == JsonValueKind.Object && errors[0].TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() ?? "" : "";
             doc.Dispose();
             if (message.Contains("PersistedQuery", StringComparison.OrdinalIgnoreCase)) throw new StoreChangedException();
             throw new HttpRequestException("The PlayStation Store said: " + message);
@@ -108,7 +108,7 @@ public sealed partial class Store(HttpClient http)
     public async Task<Concept?> ConceptOfProduct(string productId, Region region, CancellationToken ct = default)
     {
         using var doc = await Query("productRetrieveForUpsellWithCtas", new { productId }, region, ct);
-        return doc.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("productRetrieve", out var p) && p.ValueKind == JsonValueKind.Object
+        return doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object && data.TryGetProperty("productRetrieve", out var p) && p.ValueKind == JsonValueKind.Object
                && p.TryGetProperty("concept", out var c) ? ParseConcept(c, region.Currency) : null;
     }
 
@@ -116,7 +116,7 @@ public sealed partial class Store(HttpClient http)
     public async Task<Concept?> ConceptById(string conceptId, Region region, CancellationToken ct = default)
     {
         using var doc = await Query("conceptRetrieveForUpsellWithCtas", new { conceptId }, region, ct);
-        return doc.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("conceptRetrieve", out var c) && c.ValueKind == JsonValueKind.Object
+        return doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object && data.TryGetProperty("conceptRetrieve", out var c) && c.ValueKind == JsonValueKind.Object
             ? ParseConcept(c, region.Currency) : null;
     }
 
@@ -150,7 +150,7 @@ public sealed partial class Store(HttpClient http)
     public static List<StoreHit> ParseHits(JsonElement root, string container, string listName)
     {
         var list = new List<StoreHit>();
-        if (!root.TryGetProperty("data", out var data) || !data.TryGetProperty(container, out var c) || c.ValueKind != JsonValueKind.Object
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object || !data.TryGetProperty(container, out var c) || c.ValueKind != JsonValueKind.Object
             || !c.TryGetProperty(listName, out var items) || items.ValueKind != JsonValueKind.Array) return list;
         foreach (var p in items.EnumerateArray())
         {
