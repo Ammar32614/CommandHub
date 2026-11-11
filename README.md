@@ -6,7 +6,7 @@ It's a sibling to [Stint](../Timer%20app). It has the same look and the same the
 
 ## What's in it
 
-- **Home board** with eleven tiles, each with its own accent colour:
+- **Home board** with thirteen tiles, each with its own accent colour:
   - **Greeting** says good morning, afternoon or evening, with a new line each day.
   - **Weather** shows now and the next three days for a city you type. It uses [Open-Meteo](https://open-meteo.com), which is free and needs no account. It sends the city you type once, then that place's coordinates on each refresh. Like any website, Open-Meteo also sees your IP address. It refreshes every 30 minutes and keeps the last report for when you're offline.
   - **Time progress** has rings for how much of the day, week, month and year has gone.
@@ -16,8 +16,10 @@ It's a sibling to [Stint](../Timer%20app). It has the same look and the same the
   - **To-do list** lets you add items with Enter, tick them off, and delete them.
   - **Habits** shows the last 7 days as dots for each habit. Click a dot to tick that day.
   - **Quick note** saves as you type.
-  - **Quick links** open a website, a folder or an app in one click.
+  - **Quick links** open a website, a folder or an app in one click. Give links a **group** ("Uni", "Games") and they're shown together; on Home a group is one square that opens to its links, with **Open all**.
   - **Countdowns** count the days to the things you're looking forward to.
+  - **Up next** shows the next few things in the Planner.
+  - **News** shows the latest headlines from sources you pick (BBC News, Dawn, Express Tribune, Geo News, ESPNcricinfo, The Verge, Ars Technica, Hacker News, the PlayStation Blog) or any RSS feed you add. It refreshes every 30 minutes and keeps the last headlines for when you're offline.
 
   Every tile can be added more than once from **Add tile**.
 - **Edit layout** (top right) lets you:
@@ -27,7 +29,15 @@ It's a sibling to [Stint](../Timer%20app). It has the same look and the same the
   - remove tiles, with **Undo** for 6 seconds
 
   Tiles snap to a grid and never overlap. If you drop a tile somewhere taken, it slides back.
-- **Settings** has the six Stint themes (Midnight, Daylight, Paper, Forest, Ocean, Dusk) and **Start with Windows** (off by default). Start with Windows opens the hub minimized when you sign in.
+- **Settings** has:
+  - the themes (Stint's six plus After Hours) and **text size** (90% to 125%)
+  - **your name** for the greeting, and which tab to **open on**
+  - which tabs show in the **sidebar** (hiding one keeps its data)
+  - **Add-ons** (see below)
+  - **Start with Windows** (off by default; opens minimized) and **remember window size and position**
+  - **Updates**, with automatic checks you can switch off
+  - **Your data**: back up now, or open the data folder
+  - **About**: version, what's new, credits, and where to report a problem
 
 Everything saves automatically.
 
@@ -75,6 +85,39 @@ It only reads the log, never changes it, and refreshes when Stint saves.
 - **Mood calendar** colours each day of the month by mood; click a day to open it. **On this day** shows what you wrote a week, a month and a year ago.
 - Your streak counts days in a row with something written.
 
+## Add-ons
+
+The tabs above are built in. **Add-ons** are optional tabs for specific interests: you choose in **Settings › Add-ons** whether to install each one.
+
+- **Install** downloads the add-on from this project's `addons` release on GitHub, checks it against the SHA-256 checksum in the catalogue, and adds its tab straight away.
+- **Updates** for installed add-ons are mentioned shortly after Command hub starts (when automatic updates are on) and installed from the same place. **Remove** hides the tab at once. Both finish when you restart; there's a **Restart now** button.
+- Add-on files live in `%AppData%\CommandHub\addons`, and each add-on's data in `addon-data\<add-on>`, so app updates never touch them. Removing an add-on keeps its data in case you install it again.
+- A broken or outdated add-on never stops Command hub starting; Settings shows why it couldn't load.
+
+### PlayStation
+
+Compares PlayStation Store prices in the **United States, Turkey and Ukraine**, in **Pakistani rupees**.
+
+- **Deals** shows each store's current offers, laid out like the PS5 store, with the price in rupees. **Search** finds any game.
+- Open a game to see every edition's price in all three stores (sale price, how long the sale lasts, PS Plus price) with the cheapest highlighted, and add it to your **Wishlist**.
+- The wishlist is checked **once a day**. It keeps a price history and the **lowest price** each game has been, and tells you when a game goes on sale, hits a new low, or drops to a **target price** you set.
+- **Rates**: the lira and hryvnia use the official rates of the Central Bank of the Republic of Türkiye and the National Bank of Ukraine. The State Bank of Pakistan doesn't let apps read its rate, so dollars to rupees uses a market rate (open.er-api.com) unless you type in SBP's rate under **Rates**; then that's used.
+- Prices come from the PlayStation Store's own website API. Sony can change it at any time; if they do, the add-on says so and needs an update. Buying from another region's store needs an account from that region.
+
+### Media
+
+Tracks the anime, shows and movies you watch.
+
+- **Discover** searches anime (from AniList, linked to MyAnimeList) or movies and shows (from IMDb), and lists what's airing this season.
+- **Watching**, **Watchlist** and **Completed**, with episode progress (**+1** on each card), your rating out of 10 and a note.
+- **Coming up this week** shows when the next episodes air (AniList for anime, TVmaze for shows), refreshed once a day, with a note on the day a new episode is out.
+- **Import MyAnimeList**: on MyAnimeList use *Profile › Export list*, then pick the downloaded file. Your statuses, progress and scores come across.
+- **Stats** (episodes this week and month, hours watched, ratings) and **Pick for tonight** for when you can't decide.
+
+### Publishing add-ons
+
+Each add-on is a project in `AddOnProjects/` with a `manifest.json` (id, name, version, the contract `api` version, the oldest Command hub it needs). To publish, bump the add-on's version in its manifest and push a tag like `addons-v2`; the **Add-ons** workflow builds every add-on, writes `catalog.json` and uploads them to the `addons` release. To test locally, run `AddOnProjects/pack.ps1 -Out somefolder` and start Command hub with `COMMANDHUB_ADDON_SOURCE` set to that folder.
+
 ## Install and updates
 
 Download `CommandHub-win-Setup.exe` from the latest GitHub release and run it. It installs for your account only, so no admin rights are needed.
@@ -120,6 +163,9 @@ dotnet test CommandHub.Tests
 - If the file is corrupt, it's backed up as `data.corrupt-<time>.json` before the app starts fresh.
 - If the file is locked by another program, or was written by a newer version, the app won't overwrite it.
 
+- Each manual **Back up now** (Settings) goes to `backupsdata-manual-<time>.json`.
+- Add-ons keep their files in `addons` and their data in `addon-data`, next to `data.json`.
+
 To try the app against a throwaway file, set `COMMANDHUB_DATA` to another path.
 
 ## Adding a new tile type
@@ -143,4 +189,7 @@ The board, saving, edit mode and the Add tile picker pick it up automatically.
 | `Views/` | The board, tile card, tile picker and settings page |
 | `Home/` | The After Hours header and shared page helpers |
 | `Study/`, `Planner/`, `Money/`, `Journal/` | One folder per sidebar tab: the page plus its pure logic (tested) |
+| `Settings/`, `Views/AboutPage.cs` | Settings rules and the About page |
+| `AddOns/` | The add-on contract, catalogue, safe installs and loading |
+| `AddOnProjects/` | The add-ons themselves (PlayStation, Media) and `pack.ps1` |
 | `docs/superpowers/` | The design spec and build plan |

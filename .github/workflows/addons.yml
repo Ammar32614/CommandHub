@@ -1,0 +1,42 @@
+name: Add-ons
+
+# Push a tag like addons-v1 (or run this by hand) to build every add-on in AddOnProjects and publish them,
+# with catalog.json, to the "addons" release. Command hub reads that catalogue from Settings › Add-ons.
+# The release is a pre-release on purpose: app updates (Velopack) only look at full releases, so it never
+# gets mistaken for a new version of the app.
+on:
+  push:
+    tags: ['addons-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  addons:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test
+        run: dotnet test CommandHub.Tests -c Release
+
+      - name: Pack add-ons
+        shell: pwsh
+        run: ./AddOnProjects/pack.ps1 -Out dist
+
+      - name: Publish to the "addons" release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view addons *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create addons --prerelease --latest=false --title "Command hub add-ons" `
+              --notes "Add-ons for Command hub. Install them from Settings › Add-ons inside the app; there's nothing to download here by hand."
+          }
+          gh release upload addons (Get-ChildItem dist/*).FullName --clobber
