@@ -138,6 +138,10 @@ public class DataStore(string path)
     {
         data.Settings ??= new AppSettings();
         if (string.IsNullOrWhiteSpace(data.Settings.Theme)) data.Settings.Theme = "Midnight";
+        data.Settings.Name ??= "";
+        if (string.IsNullOrWhiteSpace(data.Settings.StartPage)) data.Settings.StartPage = "Home";
+        data.Settings.HiddenTabs = (data.Settings.HiddenTabs ?? []).Where(t => !string.IsNullOrWhiteSpace(t)).Distinct().ToList();
+        data.Settings.TextScale = Settings.SettingsLogic.SnapScale(data.Settings.TextScale);
 
         data.Pages = (data.Pages ?? []).Where(p => p is not null).ToList();
         if (data.Pages.Count == 0) data.Pages = [HubData.CreateHome()];

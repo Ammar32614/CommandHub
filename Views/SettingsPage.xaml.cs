@@ -1,3 +1,5 @@
+using System.IO;
+using Path = System.IO.Path;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,13 +18,198 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
+        _ = new Home.SmoothScroll(Scroll);
         _loading = true;
         try { StartWithWindows.IsChecked = _startup.IsEnabled; }
         catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException) { StartWithWindows.IsEnabled = false; }
-        _loading = false;
+        RememberWindow.IsChecked = S.RememberWindow;
+        AutoUpdate.IsChecked = S.AutoUpdate;
         BuildThemes();
+        BuildTextSize();
+        BuildName();
+        BuildStartPage();
+        BuildTabSwitches();
+        _loading = false;
+        AddOns.AddOnManager.BuildSettingsSection(AddOnsSection);
+        DataText.Text = $"{App.Store.FilePath}. Backups go in the backups folder next to it.";
         RefreshUpdates();
     }
+
+    private static Models.AppSettings S => App.Data.Settings;
+    private static MainWindow? Main => Application.Current.MainWindow as MainWindow;
+
+    // ---------------- Appearance and you ----------------
+
+    private static RadioButton Segment(string text, bool on, string group, string name, Action pick, double minWidth = 64)
+    {
+        var rb = new RadioButton { Content = text, GroupName = group, IsChecked = on, MinWidth = minWidth, Padding = new Thickness(10, 0, 10, 0) };
+        rb.SetResourceReference(StyleProperty, "Segment");
+        System.Windows.Automation.AutomationProperties.SetName(rb, name);
+        rb.Checked += (_, _) => pick();
+        return rb;
+    }
+
+    private void BuildTextSize()
+    {
+        TextSize.Children.Clear();
+        double current = Settings.SettingsLogic.SnapScale(S.TextScale);
+        foreach (var s in Settings.SettingsLogic.Scales)
+        {
+            var scale = s;
+            TextSize.Children.Add(Segment($"{s * 100:0}%", s == current, "TextSize", $"Text size {s * 100:0} percent", () =>
+            {
+                if (_loading) return;
+                S.TextScale = scale;
+                App.SaveNow();
+                Main?.ApplyTextScale();
+            }, 0));
+        }
+        var box = new Border { Padding = new Thickness(3), CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+        box.SetResourceReference(Border.BackgroundProperty, "Bg");
+        box.SetResourceReference(Border.BorderBrushProperty, "Hairline");
+        var parent = (DockPanel)TextSize.Parent;
+        parent.Children.Remove(TextSize);
+        box.Child = TextSize;
+        DockPanel.SetDock(box, Dock.Right);
+        parent.Children.Insert(0, box);
+    }
+
+    private void BuildName()
+    {
+        var field = Home.PageUi.Field(Tiles.Greeting.GreetingText.FriendlyName(Environment.UserName), S.Name, "Your name");
+        void Hint() => NameHint.Text = string.IsNullOrWhiteSpace(field.Text)
+            ? $"Greetings use your Windows name, {Settings.SettingsLogic.DisplayName("", Environment.UserName)}. Type another if you like."
+            : "Used by the greeting on Home.";
+        field.TextChanged += (_, _) =>
+        {
+            S.Name = field.Text.Trim();
+            App.SaveSoon();
+            Hint();
+        };
+        NameHost.Content = field;
+        Hint();
+    }
+
+    private void BuildStartPage()
+    {
+        StartPage.Children.Clear();
+        var home = App.Data.Pages.FirstOrDefault()?.Name ?? "Home";
+        var names = new[] { home }.Concat(MainWindow.BuiltInTabs.Concat(MainWindow.AddOnTabs)
+            .Where(t => !S.HiddenTabs.Contains(t.Name, StringComparer.OrdinalIgnoreCase)).Select(t => t.Name)).ToList();
+        var current = names.FirstOrDefault(n => n.Equals(S.StartPage, StringComparison.OrdinalIgnoreCase)) ?? home;
+        foreach (var n in names)
+        {
+            var name = n;
+            StartPage.Children.Add(Segment(n, n == current, "StartPage", $"Open on {n}", () =>
+            {
+                if (_loading) return;
+                S.StartPage = name;
+                App.SaveNow();
+            }, 72));
+        }
+    }
+
+    private void BuildTabSwitches()
+    {
+        TabSwitches.Children.Clear();
+        var tabs = MainWindow.BuiltInTabs.Concat(MainWindow.AddOnTabs).Where(t => t.CanHide).ToList();
+        for (int i = 0; i < tabs.Count; i++)
+        {
+            var tab = tabs[i];
+            if (i > 0) TabSwitches.Children.Add(Hairline());
+            var text = new StackPanel { Margin = new Thickness(0, 0, 20, 0) };
+            text.Children.Add(new TextBlock { Text = tab.Name });
+            var caption = new TextBlock { Text = TabBlurb(tab.Name), TextWrapping = TextWrapping.Wrap };
+            caption.SetResourceReference(StyleProperty, "Caption");
+            caption.Margin = new Thickness(0, 2, 0, 0);
+            text.Children.Add(caption);
+            var sw = new CheckBox { Content = text, IsChecked = !S.HiddenTabs.Contains(tab.Name, StringComparer.OrdinalIgnoreCase) };
+            sw.SetResourceReference(StyleProperty, "Switch");
+            System.Windows.Automation.AutomationProperties.SetName(sw, $"Show {tab.Name}");
+            sw.Checked += (_, _) => SetTabVisible(tab.Name, true);
+            sw.Unchecked += (_, _) => SetTabVisible(tab.Name, false);
+            TabSwitches.Children.Add(sw);
+        }
+        var note = new TextBlock { Text = "Hiding a tab keeps everything in it. Switch it back on any time.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0) };
+        note.SetResourceReference(StyleProperty, "Caption");
+        TabSwitches.Children.Add(note);
+    }
+
+    private static string TabBlurb(string name) => name switch
+    {
+        "Study" => "Study time from Stint, by course and task.",
+        "Planner" => "Classes, deadlines, exams and events.",
+        "Money" => "Spending, budgets and where it goes.",
+        "Journal" => "A line or a page a day, with your mood.",
+        _ => AddOns.AddOnManager.BlurbFor(name) ?? "",
+    };
+
+    private void SetTabVisible(string name, bool visible)
+    {
+        if (_loading) return;
+        S.HiddenTabs.RemoveAll(t => t.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (!visible) S.HiddenTabs.Add(name);
+        App.SaveNow();
+        Main?.RebuildNav();
+        _loading = true;
+        BuildStartPage();
+        _loading = false;
+    }
+
+    private static Border Hairline()
+    {
+        var b = new Border { Height = 1, Margin = new Thickness(0, 14, 0, 14) };
+        b.SetResourceReference(Border.BackgroundProperty, "Hairline");
+        return b;
+    }
+
+    // ---------------- Window, data, about ----------------
+
+    private void RememberWindow_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        S.RememberWindow = RememberWindow.IsChecked == true;
+        if (!S.RememberWindow) S.Window = null;
+        App.SaveNow();
+    }
+
+    private void AutoUpdate_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        S.AutoUpdate = AutoUpdate.IsChecked == true;
+        App.SaveNow();
+    }
+
+    private void BackUp_Click(object sender, RoutedEventArgs e)
+    {
+        App.SaveNow();
+        try
+        {
+            var dir = Path.Combine(Path.GetDirectoryName(App.Store.FilePath)!, "backups");
+            Directory.CreateDirectory(dir);
+            var target = Path.Combine(dir, $"data-manual-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+            File.Copy(App.Store.FilePath, target, overwrite: false);
+            Main?.ShowNotice($"Backed up to {target}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Main?.ShowNotice("Couldn't make a backup: " + ex.Message);
+        }
+    }
+
+    private void OpenData_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{Path.GetDirectoryName(App.Store.FilePath)}\"") { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Main?.ShowNotice("Couldn't open the folder: " + ex.Message);
+        }
+    }
+
+    private void About_Click(object sender, RoutedEventArgs e) => Main?.ShowAbout();
 
     // ---------------- Updates ----------------
 

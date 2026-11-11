@@ -55,10 +55,10 @@ public sealed class Updates
     public void StartBackgroundChecks()
     {
         if (State == UpdateState.NotInstalled) return;
-        _timer.Tick += async (_, _) => { if (IsCheckDue(_lastCheck, DateTime.UtcNow)) await CheckAsync(); };
+        _timer.Tick += async (_, _) => { if (App.Data.Settings.AutoUpdate && IsCheckDue(_lastCheck, DateTime.UtcNow)) await CheckAsync(); };
         _timer.Start();
         var first = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
-        first.Tick += async (_, _) => { first.Stop(); await CheckAsync(); };
+        first.Tick += async (_, _) => { first.Stop(); if (App.Data.Settings.AutoUpdate) await CheckAsync(); };
         first.Start();
     }
 

@@ -19,60 +19,92 @@ public partial class MainWindow : Window
             WindowEffects.KeepMaximizedInWorkArea(this);
         };
         StateChanged += (_, _) => UpdateMaximized();
-        Closing += (_, _) => App.FlushSaves();
+        Closing += (_, _) => { RememberPlacement(); App.FlushSaves(); };
+        RestorePlacement();
+        ApplyTextScale();
         BuildNav();
     }
 
-    private void BuildNav()
+    // ---------------- Text size and window position ----------------
+
+    /// <summary>Scales the whole window (Settings, Text size).</summary>
+    public void ApplyTextScale()
     {
-        PageNav.Children.Clear();
-        foreach (var page in App.Data.Pages)
-        {
-            var item = new RadioButton
-            {
-                GroupName = "Nav",
-                Style = (Style)FindResource("NavItem"),
-                Content = NavContent(page.Icon, page.Name),
-                Margin = new Thickness(0, 0, 0, 2),
-            };
-            System.Windows.Automation.AutomationProperties.SetName(item, page.Name);
-            item.Checked += (_, _) => ShowPage(page);
-            PageNav.Children.Add(item);
-
-            // Study sits directly below Home.
-            if (page == App.Data.Pages[0])
-            {
-                var study = new RadioButton
-                {
-                    GroupName = "Nav",
-                    Style = (Style)FindResource("NavItem"),
-                    Content = NavContent("", "Study"),
-                    Margin = new Thickness(0, 0, 0, 2),
-                };
-                System.Windows.Automation.AutomationProperties.SetName(study, "Study");
-                study.Checked += (_, _) => ShowStudy();
-                PageNav.Children.Add(study);
-
-                _plannerNav = new RadioButton
-                {
-                    GroupName = "Nav",
-                    Style = (Style)FindResource("NavItem"),
-                    Content = NavContent("", "Planner"),
-                    Margin = new Thickness(0, 0, 0, 2),
-                };
-                System.Windows.Automation.AutomationProperties.SetName(_plannerNav, "Planner");
-                _plannerNav.Checked += (_, _) => OpenPlannerPage();
-                PageNav.Children.Add(_plannerNav);
-
-                PageNav.Children.Add(Extra("", "Money", () => new Money.MoneyPage()));
-                PageNav.Children.Add(Extra("", "Journal", () => new Journal.JournalPage()));
-            }
-        }
-        if (PageNav.Children.Count > 0) ((RadioButton)PageNav.Children[0]).IsChecked = true;
+        double s = Settings.SettingsLogic.SnapScale(App.Data.Settings.TextScale);
+        Root.LayoutTransform = s == 1.0 ? null : new System.Windows.Media.ScaleTransform(s, s);
     }
 
-    /// <summary>A sidebar entry for a built-in tab (Money, Journal).</summary>
-    private RadioButton Extra(string icon, string name, Func<UIElement> create)
+    private void RestorePlacement()
+    {
+        if (!App.Data.Settings.RememberWindow) return;
+        var screen = (SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
+        if (Settings.SettingsLogic.FitOnScreen(App.Data.Settings.Window, screen) is not { } p) return;
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = p.Left; Top = p.Top; Width = p.Width; Height = p.Height;
+        if (p.Maximized) WindowState = WindowState.Maximized;
+    }
+
+    private void RememberPlacement()
+    {
+        if (!App.Data.Settings.RememberWindow || WindowState == WindowState.Minimized && RestoreBounds.IsEmpty) return;
+        var r = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+        if (r.IsEmpty) return;
+        App.Data.Settings.Window = new Models.WindowPlacement { Left = r.Left, Top = r.Top, Width = r.Width, Height = r.Height, Maximized = WindowState == WindowState.Maximized };
+        App.SaveSoon(); // flushed right after, as the window closes
+    }
+
+    /// <summary>A sidebar tab other than a board page: the built-in ones, and later ones add-ons bring.</summary>
+    public sealed record HubTab(string Name, string Icon, Func<UIElement> Create, bool CanHide = true);
+
+    /// <summary>The built-in tabs, in sidebar order (right below Home).</summary>
+    public static readonly List<HubTab> BuiltInTabs =
+    [
+        new("Study", "", () => new Study.StudyPage()),
+        new("Planner", "", () => new Planner.PlannerPage()),
+        new("Money", "", () => new Money.MoneyPage()),
+        new("Journal", "", () => new Journal.JournalPage()),
+    ];
+
+    /// <summary>Tabs added by installed add-ons (shown after the built-in ones).</summary>
+    public static readonly List<HubTab> AddOnTabs = [];
+
+    private readonly Dictionary<string, RadioButton> _tabNav = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Rebuilds the sidebar (after Settings hides or shows a tab). Keeps Settings selected.</summary>
+    public void RebuildNav() => BuildNav(selectStart: false);
+
+    private void BuildNav(bool selectStart = true)
+    {
+        PageNav.Children.Clear();
+        _tabNav.Clear();
+        _plannerNav = null;
+        var hidden = App.Data.Settings.HiddenTabs;
+        foreach (var page in App.Data.Pages)
+        {
+            var item = NavItem(page.Icon, page.Name);
+            item.Checked += (_, _) => ShowPage(page);
+            PageNav.Children.Add(item);
+            _tabNav.TryAdd(page.Name, item);
+
+            // The tabs sit directly below Home.
+            if (page != App.Data.Pages[0]) continue;
+            foreach (var tab in BuiltInTabs.Concat(AddOnTabs))
+            {
+                if (tab.CanHide && hidden.Contains(tab.Name, StringComparer.OrdinalIgnoreCase)) continue;
+                var nav = NavItem(tab.Icon, tab.Name);
+                var captured = tab;
+                nav.Checked += (_, _) => OpenTab(captured);
+                PageNav.Children.Add(nav);
+                _tabNav[tab.Name] = nav;
+                if (tab.Name == "Planner") _plannerNav = nav;
+            }
+        }
+        if (!selectStart) return;
+        var start = _tabNav.GetValueOrDefault(App.Data.Settings.StartPage) ?? PageNav.Children.OfType<RadioButton>().FirstOrDefault();
+        if (start != null) start.IsChecked = true;
+    }
+
+    private RadioButton NavItem(string icon, string name)
     {
         var item = new RadioButton
         {
@@ -82,13 +114,23 @@ public partial class MainWindow : Window
             Margin = new Thickness(0, 0, 0, 2),
         };
         System.Windows.Automation.AutomationProperties.SetName(item, name);
-        item.Checked += (_, _) =>
-        {
-            HideSheet();
-            App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
-            PageHost.Content = create();
-        };
         return item;
+    }
+
+    private void OpenTab(HubTab tab)
+    {
+        HideSheet();
+        App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
+        try
+        {
+            PageHost.Content = tab.Create();
+        }
+        catch (Exception ex)
+        {
+            // An add-on's page failing to build mustn't take the whole app down.
+            PageHost.Content = null;
+            ShowNotice($"{tab.Name} couldn't open: {ex.Message}");
+        }
     }
 
     private static StackPanel NavContent(string icon, string name)
@@ -128,26 +170,12 @@ public partial class MainWindow : Window
 
     private RadioButton? _plannerNav;
 
-    /// <summary>Selects Planner in the sidebar (used by the "Up next" tile).</summary>
+    /// <summary>Selects Planner in the sidebar (used by the "Up next" tile). Opens it even when the tab is hidden.</summary>
     public void ShowPlanner()
     {
-        if (_plannerNav is null) return;
-        if (_plannerNav.IsChecked == true) OpenPlannerPage();
+        var planner = BuiltInTabs.First(t => t.Name == "Planner");
+        if (_plannerNav is null || _plannerNav.IsChecked == true) OpenTab(planner);
         else _plannerNav.IsChecked = true;
-    }
-
-    private void OpenPlannerPage()
-    {
-        HideSheet();
-        App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
-        PageHost.Content = new Planner.PlannerPage();
-    }
-
-    private void ShowStudy()
-    {
-        HideSheet();
-        App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
-        PageHost.Content = new Study.StudyPage();
     }
 
     // ---------------- Sheet and toast ----------------
@@ -198,10 +226,20 @@ public partial class MainWindow : Window
         action?.Invoke();
     }
 
-    private void Settings_Checked(object sender, RoutedEventArgs e)
+    private void Settings_Checked(object sender, RoutedEventArgs e) => ShowSettingsPage();
+
+    public void ShowSettingsPage()
     {
         HideSheet();
+        App.CommitOpenEdits(); // leaving Home: let any open tile editor save first
         PageHost.Content = new SettingsPage { Margin = new Thickness(0, 40, 0, 0) };
+    }
+
+    /// <summary>Opens About (from Settings); Settings stays selected in the sidebar.</summary>
+    public void ShowAbout()
+    {
+        HideSheet();
+        PageHost.Content = new AboutPage();
     }
 
     // ---------------- Notice banner ----------------

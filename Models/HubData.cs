@@ -5,6 +5,26 @@ namespace CommandHub.Models;
 public class AppSettings
 {
     public string Theme { get; set; } = "Midnight";
+    /// <summary>The name greetings use. Blank means the Windows user name.</summary>
+    public string Name { get; set; } = "";
+    /// <summary>The sidebar tab Command hub opens on: Home, Study, Planner, Money or Journal.</summary>
+    public string StartPage { get; set; } = "Home";
+    /// <summary>Built-in tabs switched off in Settings (Study, Planner, Money, Journal).</summary>
+    public List<string> HiddenTabs { get; set; } = [];
+    public double TextScale { get; set; } = 1.0;
+    public bool RememberWindow { get; set; } = true;
+    public WindowPlacement? Window { get; set; }
+    public bool AutoUpdate { get; set; } = true;
+}
+
+/// <summary>Where the window was when Command hub last closed.</summary>
+public class WindowPlacement
+{
+    public double Left { get; set; }
+    public double Top { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public bool Maximized { get; set; }
 }
 
 /// <summary>Everything Command hub saves, as one versioned JSON document.</summary>

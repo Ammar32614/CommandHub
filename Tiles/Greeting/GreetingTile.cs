@@ -22,7 +22,7 @@ public sealed class GreetingView : UserControl
     private readonly TextBlock _hello = TileUi.Display("", 26, weight: FontWeights.SemiBold);
     private readonly TextBlock _line = TileUi.Text("", 13, "Muted");
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };
-    private readonly string _name = GreetingText.FriendlyName(Environment.UserName);
+    private static string _name => Settings.SettingsLogic.DisplayName(App.Data.Settings.Name, Environment.UserName);
 
     public GreetingView()
     {
