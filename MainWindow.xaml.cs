@@ -13,7 +13,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        SourceInitialized += (_, _) => WindowEffects.ApplyRoundedCorners(this, dark: !App.Theme.IsLight);
+        SourceInitialized += (_, _) =>
+        {
+            WindowEffects.ApplyRoundedCorners(this, dark: !App.Theme.IsLight);
+            WindowEffects.KeepMaximizedInWorkArea(this);
+        };
         StateChanged += (_, _) => UpdateMaximized();
         Closing += (_, _) => App.FlushSaves();
         BuildNav();
@@ -223,7 +227,7 @@ public partial class MainWindow : Window
     private void UpdateMaximized()
     {
         bool max = WindowState == WindowState.Maximized;
-        Root.Margin = max ? new Thickness(7) : new Thickness(0);
+        Root.Margin = new Thickness(0); // maximising already stops at the taskbar (see KeepMaximizedInWorkArea)
         MaxBtn.Content = max ? "" : "";
         MaxBtn.ToolTip = max ? "Restore" : "Maximize";
     }
