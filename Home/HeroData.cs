@@ -60,6 +60,12 @@ public static class HeroData
             ? LinksContent.Read(t.Content).Where(l => l.Target.Trim().Length > 0).Take(max).ToList()
             : [];
 
+    /// <summary>Every link on the page's first quick links tile, with groups gathered together.</summary>
+    public static List<LinkEntry> LinkEntries(Page page) =>
+        First(page, "links") is { } t
+            ? LinksContent.Arrange(LinksContent.Read(t.Content).Where(l => l.Target.Trim().Length > 0))
+            : [];
+
     /// <summary>Unfinished to-dos from the first to-do tile, with their index in that tile's list.</summary>
     public static List<(int Index, string Text)> OpenTodos(Page page) =>
         First(page, "todo") is { } t
@@ -77,7 +83,7 @@ public static class HeroData
     }
 
     /// <summary>Adds a link to the first quick links tile, creating that tile in a free spot if the page has none.</summary>
-    public static bool PinLink(Page page, string name, string target)
+    public static bool PinLink(Page page, string name, string target, string group = "")
     {
         target = (target ?? "").Trim();
         if (target.Length == 0) return false;
@@ -92,7 +98,7 @@ public static class HeroData
             page.Tiles.Add(tile);
         }
         var links = LinksContent.Read(tile.Content);
-        links.Add(new QuickLink(name, target));
+        links.Add(new QuickLink(name, target, (group ?? "").Trim()));
         LinksContent.Write(tile.Content, links);
         return true;
     }

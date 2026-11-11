@@ -20,6 +20,7 @@ public sealed class HeroView : UserControl
     private readonly Page _page;
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(20) };
     private bool _pinning;
+    private string? _openGroup;             // a link group opened in the row of links, or null
     private FrameworkElement? _pinEditor;   // built once per pin, reused across re-renders so typing survives
     private bool _stale;                    // data changed while the user was busy in the header
     private TextBlock? _breadcrumb, _eyebrow, _sub;
@@ -187,22 +188,53 @@ public sealed class HeroView : UserControl
     private FrameworkElement QuickRow()
     {
         var row = new WrapPanel { Margin = new Thickness(0, 31, 0, 0) };
-        foreach (var link in HeroData.Links(_page, 5))
+        var entries = HeroData.LinkEntries(_page);
+        var open = _openGroup is null ? null : entries.FirstOrDefault(e => e.Group != null && e.Group.Equals(_openGroup, StringComparison.OrdinalIgnoreCase));
+        if (open is not null)
         {
-            var kind = LinkTarget.Guess(link.Target);
-            var glyph = kind switch { LinkKind.Web => "\uE774", LinkKind.Folder => "\uE8B7", LinkKind.File => "\uE8A5", _ => "\uE71B" };
-            var square = Square(glyph, link.Name.Length > 0 ? link.Name : link.Target, link.Target);
-            square.Click += (_, _) =>
+            // Inside a group: back, its links, and "open all".
+            var back = Square("\uE72B", open.Group!, "Back to all links");
+            System.Windows.Automation.AutomationProperties.SetName(back, $"Close group {open.Group}");
+            back.Click += (_, _) => { _openGroup = null; Render(); };
+            row.Children.Add(back);
+            foreach (var link in open.Links) row.Children.Add(LinkSquare(link));
+            if (open.Links.Count > 1)
             {
-                if (!LinkTarget.TryOpen(link.Target, out var error))
-                    (Application.Current.MainWindow as MainWindow)?.ShowNotice($"{link.Name}: {error}");
-            };
+                var all = Square("\uE8A7", "Open all", $"Open all {open.Links.Count} links in {open.Group}");
+                all.Click += (_, _) => { foreach (var l in open.Links) OpenLink(l); };
+                row.Children.Add(all);
+            }
+            return row;
+        }
+        _openGroup = null;
+        foreach (var entry in entries.Take(7))
+        {
+            if (entry.Group is null) { row.Children.Add(LinkSquare(entry.Links[0])); continue; }
+            var g = entry.Group;
+            var square = Square("\uE8B7", g, $"{entry.Links.Count} {(entry.Links.Count == 1 ? "link" : "links")}: " + string.Join(", ", entry.Links.Select(l => l.Name)));
+            System.Windows.Automation.AutomationProperties.SetName(square, $"Open group {g}");
+            square.Click += (_, _) => { _openGroup = g; Render(); };
             row.Children.Add(square);
         }
         var pin = Square("\uE710", "Pin a link", "Add a website, folder or app here");
         pin.Click += (_, _) => { _pinning = true; Render(); };
         row.Children.Add(pin);
         return row;
+    }
+
+    private Button LinkSquare(QuickLink link)
+    {
+        var kind = LinkTarget.Guess(link.Target);
+        var glyph = kind switch { LinkKind.Web => "\uE774", LinkKind.Folder => "\uE8B7", LinkKind.File => "\uE8A5", _ => "\uE71B" };
+        var square = Square(glyph, link.Name.Length > 0 ? link.Name : link.Target, link.Target);
+        square.Click += (_, _) => OpenLink(link);
+        return square;
+    }
+
+    private static void OpenLink(QuickLink link)
+    {
+        if (!LinkTarget.TryOpen(link.Target, out var error))
+            (Application.Current.MainWindow as MainWindow)?.ShowNotice($"{link.Name}: {error}");
     }
 
     private static Button Square(string glyph, string label, string tooltip)
@@ -249,13 +281,16 @@ public sealed class HeroView : UserControl
         }
         var name = Field("Name (optional)", "Pin name", 150);
         var target = Field("https://… or C:\\folder", "Pin target", 260);
+        var groups = LinksContent.Groups(HeroData.LinkEntries(_page).SelectMany(e => e.Links));
+        var group = Field(groups.Count > 0 ? $"Group, e.g. {groups[0]}" : "Group (optional)", "Pin group", 150);
+        group.Text = _openGroup ?? "";
         var error = T("", 11, "Danger");
         error.Margin = new Thickness(0, 6, 0, 0);
 
         void Pin()
         {
             App.CommitOpenEdits(); // an open links editor on the board would otherwise write over the new link
-            if (!HeroData.PinLink(_page, name.Text, target.Text)) { error.Text = "Type a website, folder or app first."; target.Focus(); return; }
+            if (!HeroData.PinLink(_page, name.Text, target.Text, group.Text)) { error.Text = "Type a website, folder or app first."; target.Focus(); return; }
             _pinning = false;
             _pinEditor = null;
             App.SaveNow();
@@ -278,10 +313,16 @@ public sealed class HeroView : UserControl
             else if (e.Key == Key.Escape) Cancel();
         };
         target.KeyDown += (_, e) => { if (e.Key == Key.Escape) Cancel(); };
+        group.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter) { e.Handled = true; Pin(); }
+            else if (e.Key == Key.Escape) Cancel();
+        };
 
         var line = new StackPanel { Orientation = Orientation.Horizontal };
         line.Children.Add(name);
         line.Children.Add(target);
+        line.Children.Add(group);
         line.Children.Add(pinBtn);
         line.Children.Add(cancel);
         var panel = new StackPanel { Margin = new Thickness(0, 31, 0, 11), MinHeight = 88 };

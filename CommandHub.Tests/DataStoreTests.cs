@@ -27,7 +27,7 @@ public class DataStoreTests : IDisposable
     {
         var d = new DataStore(PathIn).Load();
         Assert.Equal("Home", Assert.Single(d.Pages).Name);
-        Assert.Equal(12, d.Pages[0].Tiles.Count);
+        Assert.Equal(13, d.Pages[0].Tiles.Count);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class DataStoreTests : IDisposable
     [Fact]
     public void Load_NewerVersionWithUnknownEnum_RefusesToOverwriteAndIsNotCorrupt()
     {
-        var json = """{"version":4,"pages":[{"name":"Home","tiles":[{"typeId":"note","column":0,"row":0,"size":"Huge"}]}]}""";
+        var json = """{"version":99,"pages":[{"name":"Home","tiles":[{"typeId":"note","column":0,"row":0,"size":"Huge"}]}]}""";
         WriteRaw(json);
         var s = new DataStore(PathIn);
         s.Load();
@@ -125,7 +125,7 @@ public class DataStoreTests : IDisposable
     [Fact]
     public void Load_NullEntries_DoNotThrow()
     {
-        WriteRaw("""{"version":3,"pages":[null,{"name":null,"tiles":[null,{"typeId":"note","content":null}]}],"settings":null}""");
+        WriteRaw("""{"version":4,"pages":[null,{"name":null,"tiles":[null,{"typeId":"note","content":null}]}],"settings":null}""");
         var d = new DataStore(PathIn).Load();
         var tile = Assert.Single(Assert.Single(d.Pages).Tiles);
         Assert.NotNull(tile.Content);

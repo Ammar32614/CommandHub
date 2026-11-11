@@ -14,13 +14,13 @@ public class HomeUpgradeTests : IDisposable
     }
 
     static readonly string[] NewHomeTypes =
-        ["greeting", "weather", "progress", "clock", "focus", "system", "todo", "habits", "note", "links", "countdown", "upnext"];
+        ["greeting", "weather", "progress", "clock", "focus", "system", "todo", "habits", "note", "links", "countdown", "upnext", "news"];
 
     [Fact]
-    public void CreateDefault_IsVersion3WithVibrantHome()
+    public void CreateDefault_IsCurrentVersionWithVibrantHome()
     {
         var d = HubData.CreateDefault();
-        Assert.Equal(3, d.Version);
+        Assert.Equal(HubData.CurrentVersion, d.Version);
         var tiles = d.Pages[0].Tiles;
         Assert.Equal(NewHomeTypes.OrderBy(x => x), tiles.Select(t => t.TypeId).OrderBy(x => x));
         foreach (var t in tiles) Assert.True(BoardGrid.Fits(tiles, t.Column, t.Row, t.Size, t.Id), $"{t.TypeId} overlaps");
@@ -44,7 +44,7 @@ public class HomeUpgradeTests : IDisposable
         var store = new DataStore(PathIn);
         var d = store.Load();
 
-        Assert.Equal(3, d.Version);
+        Assert.Equal(HubData.CurrentVersion, d.Version);
         Assert.False(store.ReadFailed);
         var tiles = d.Pages[0].Tiles;
         Assert.Equal(NewHomeTypes.OrderBy(x => x), tiles.Select(t => t.TypeId).OrderBy(x => x));
@@ -83,8 +83,8 @@ public class HomeUpgradeTests : IDisposable
         File.WriteAllText(PathIn, V1(UntouchedV1Tiles));
         var store = new DataStore(PathIn);
         store.Save(store.Load());
-        Assert.Contains("\"version\": 3", File.ReadAllText(PathIn));
-        Assert.Equal(12, new DataStore(PathIn).Load().Pages[0].Tiles.Count);
+        Assert.Contains("\"version\": 4", File.ReadAllText(PathIn));
+        Assert.Equal(13, new DataStore(PathIn).Load().Pages[0].Tiles.Count);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class UpgradeBackupTests : IDisposable
         var store = new CommandHub.Services.DataStore(PathIn);
         store.Save(store.Load());
         Assert.Equal(v1, File.ReadAllText(Path.Combine(_dir, "data.v1.json")));
-        Assert.Contains("\"version\": 3", File.ReadAllText(PathIn));
+        Assert.Contains("\"version\": 4", File.ReadAllText(PathIn));
     }
 
     [Fact]
@@ -149,5 +149,30 @@ public class UpgradeBackupTests : IDisposable
         store.Save(HubData.CreateDefault());
         store.Save(store.Load());
         Assert.Empty(Directory.GetFiles(_dir, "data.v*.json"));
+    }
+
+    [Fact]
+    public void Upgrade_V3_AddsNews_AndBringsBackWeather_WithoutMovingAnything()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(PathIn, """
+            {"version":3,"pages":[{"name":"Home","tiles":[
+              {"id":"11111111-1111-1111-1111-111111111111","typeId":"clock","column":0,"row":0,"size":"Large"},
+              {"id":"22222222-2222-2222-2222-222222222222","typeId":"note","column":2,"row":0,"size":"Wide"}]}]}
+            """);
+        var home = new DataStore(PathIn).Load().Pages[0];
+        Assert.Contains(home.Tiles, t => t.TypeId == "news");
+        Assert.Contains(home.Tiles, t => t.TypeId == "weather");
+        Assert.Contains(home.Tiles, t => t.TypeId == "clock" && t.Column == 0 && t.Row == 0);
+        Assert.Contains(home.Tiles, t => t.TypeId == "note" && t.Column == 2 && t.Row == 0);
+        foreach (var t in home.Tiles) Assert.True(BoardGrid.Fits(home.Tiles, t.Column, t.Row, t.Size, t.Id), $"{t.TypeId} overlaps");
+    }
+
+    [Fact]
+    public void Upgrade_V4_DoesNotReaddARemovedNewsTile()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(PathIn, """{"version":4,"pages":[{"name":"Home","tiles":[{"typeId":"clock","column":0,"row":0,"size":"Large"}]}]}""");
+        Assert.DoesNotContain(new DataStore(PathIn).Load().Pages[0].Tiles, t => t.TypeId == "news");
     }
 }

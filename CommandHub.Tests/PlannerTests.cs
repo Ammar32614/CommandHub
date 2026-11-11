@@ -174,7 +174,7 @@ public class PlannerDataTests : IDisposable
         File.WriteAllText(PathIn, """{"version":2,"pages":[{"name":"Home","tiles":[{"typeId":"note","column":0,"row":0,"size":"Wide","content":{"text":"keep"}}]}]}""");
         var store = new CommandHub.Services.DataStore(PathIn);
         var d = store.Load();
-        Assert.Equal(3, d.Version);
+        Assert.Equal(HubData.CurrentVersion, d.Version);
         Assert.True(store.Upgraded);
         Assert.Empty(d.Planner);
         Assert.Equal("keep", (string?)d.Pages[0].Tiles.Single(t => t.TypeId == "note").Content["text"]);

@@ -21,43 +21,10 @@ public enum Sky { Clear, Cloudy, Fog, Rain, Snow, Storm, Unknown }
 /// </summary>
 public static class WeatherApi
 {
-    private static readonly HttpClient Http = new(new SocketsHttpHandler { ConnectCallback = ConnectAsync })
-    {
-        Timeout = TimeSpan.FromSeconds(15),
-    };
-
-    static WeatherApi() => Http.DefaultRequestHeaders.UserAgent.ParseAdd("CommandHub/0.1");
+    private static HttpClient Http => Services.Net.Http;
 
     /// <summary>IPv4 addresses first, IPv6 after, as a fallback.</summary>
-    public static IPAddress[] ConnectOrder(IEnumerable<IPAddress> addresses) =>
-        addresses.OrderBy(a => a.AddressFamily == AddressFamily.InterNetwork ? 0 : 1).ToArray();
-
-    /// <summary>
-    /// .NET tries addresses strictly in DNS order. On networks where IPv6 is listed first but doesn't really
-    /// work, that stalls for ~20 s before falling back. Try IPv4 first, each address for at most 4 s.
-    /// </summary>
-    private static async ValueTask<Stream> ConnectAsync(SocketsHttpConnectionContext ctx, CancellationToken ct)
-    {
-        var addresses = ConnectOrder(await Dns.GetHostAddressesAsync(ctx.DnsEndPoint.Host, ct));
-        Exception? last = null;
-        foreach (var address in addresses)
-        {
-            var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
-            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            attempt.CancelAfter(TimeSpan.FromSeconds(4));
-            try
-            {
-                await socket.ConnectAsync(new IPEndPoint(address, ctx.DnsEndPoint.Port), attempt.Token);
-                return new NetworkStream(socket, ownsSocket: true);
-            }
-            catch (Exception ex) when (ex is SocketException or OperationCanceledException && !ct.IsCancellationRequested)
-            {
-                socket.Dispose();
-                last = ex;
-            }
-        }
-        throw new HttpRequestException("Couldn't connect to the weather service.", last);
-    }
+    public static IPAddress[] ConnectOrder(IEnumerable<IPAddress> addresses) => Services.Net.ConnectOrder(addresses);
 
     public static string GeocodeUrl(string city) =>
         $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(city.Trim())}&count=1&language=en&format=json";

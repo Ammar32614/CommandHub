@@ -44,7 +44,26 @@ public partial class LinksTileView : UserControl
         EmptyPanel.Visibility = _links.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         LinkButtons.Children.Clear();
-        foreach (var link in _links)
+        // Ungrouped links first, then a small heading and a row for each group.
+        var loose = new WrapPanel();
+        LinkButtons.Children.Add(loose);
+        foreach (var entry in LinksContent.Arrange(_links))
+        {
+            var target = loose;
+            if (entry.Group != null)
+            {
+                var head = new TextBlock { Text = entry.Group.ToUpperInvariant(), FontSize = 9, FontWeight = FontWeights.SemiBold, Margin = new Thickness(1, 6, 0, 6) };
+                head.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
+                LinkButtons.Children.Add(head);
+                target = new WrapPanel();
+                LinkButtons.Children.Add(target);
+            }
+            foreach (var link in entry.Links) target.Children.Add(Chip(link));
+        }
+    }
+
+    private Button Chip(QuickLink link)
+    {
         {
             var content = new StackPanel { Orientation = Orientation.Horizontal };
             content.Children.Add(new TextBlock
@@ -64,7 +83,7 @@ public partial class LinksTileView : UserControl
             {
                 if (!LinkTarget.TryOpen(link.Target, out var error)) ShowError(error);
             };
-            LinkButtons.Children.Add(button);
+            return button;
         }
     }
 
@@ -81,7 +100,7 @@ public partial class LinksTileView : UserControl
     private void Edit_Click(object sender, RoutedEventArgs e)
     {
         Rows.Children.Clear();
-        foreach (var link in _links) AddRow(link.Name, link.Target);
+        foreach (var link in _links) AddRow(link.Name, link.Target, link.Group);
         if (_links.Count == 0) AddRow("", "");
         ShowPanel.Visibility = Visibility.Collapsed;
         EditBtn.Visibility = Visibility.Collapsed;
@@ -90,11 +109,13 @@ public partial class LinksTileView : UserControl
 
     private void AddRow_Click(object sender, RoutedEventArgs e) => AddRow("", "");
 
-    private void AddRow(string name, string target)
+    private void AddRow(string name, string target, string group = "")
     {
         var fieldStyle = (Style)FindResource("FieldBox");
         var nameBox = new TextBox { Style = fieldStyle, Tag = "Name", Text = name, Width = 110, Padding = new Thickness(8, 4, 8, 4), FontSize = 12 };
         var targetBox = new TextBox { Style = fieldStyle, Tag = "https://… or C:\\folder", Text = target, Padding = new Thickness(8, 4, 8, 4), FontSize = 12, Margin = new Thickness(6, 0, 0, 0) };
+        var groupBox = new TextBox { Style = fieldStyle, Tag = "Group", Text = group, Width = 80, Padding = new Thickness(8, 4, 8, 4), FontSize = 12, Margin = new Thickness(6, 0, 0, 0), ToolTip = "Optional: links with the same group are shown together" };
+        System.Windows.Automation.AutomationProperties.SetName(groupBox, "Link group");
         System.Windows.Automation.AutomationProperties.SetName(nameBox, "Link name");
         System.Windows.Automation.AutomationProperties.SetName(targetBox, "Link target");
         var remove = new Button
@@ -108,6 +129,8 @@ public partial class LinksTileView : UserControl
         DockPanel.SetDock(nameBox, Dock.Left);
         DockPanel.SetDock(remove, Dock.Right);
         row.Children.Add(nameBox);
+        DockPanel.SetDock(groupBox, Dock.Left);
+        row.Children.Add(groupBox);
         row.Children.Add(remove);
         row.Children.Add(targetBox);
         remove.Click += (_, _) => Rows.Children.Remove(row);
@@ -132,7 +155,7 @@ public partial class LinksTileView : UserControl
     {
         _links = Rows.Children.OfType<DockPanel>()
             .Select(r => r.Children.OfType<TextBox>().ToArray())
-            .Select(b => new QuickLink(b[0].Text.Trim(), b[1].Text.Trim()))
+            .Select(b => new QuickLink(b[0].Text.Trim(), b[2].Text.Trim(), b[1].Text.Trim()))
             .Where(l => l.Target.Length > 0)
             .ToList();
         LinksContent.Write(_ctx.Content, _links);

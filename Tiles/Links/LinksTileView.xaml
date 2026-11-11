@@ -14,7 +14,7 @@
                             Margin="0,8,0,0" Padding="10,5" Click="Edit_Click"/>
                 </StackPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-                    <WrapPanel x:Name="LinkButtons"/>
+                    <StackPanel x:Name="LinkButtons"/>
                 </ScrollViewer>
             </Grid>
         </DockPanel>

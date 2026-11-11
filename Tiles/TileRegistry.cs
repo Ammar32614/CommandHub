@@ -22,6 +22,7 @@ public static class TileRegistry
         new Countdown.CountdownTile(),
         new Habits.HabitsTile(),
         new UpNext.UpNextTile(),
+        new News.NewsTile(),
     ];
 
     /// <summary>Null for a type this version doesn't know (e.g. from a newer save file); the board shows a placeholder.</summary>

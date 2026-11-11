@@ -30,8 +30,8 @@ public class WindowPlacement
 /// <summary>Everything Command hub saves, as one versioned JSON document.</summary>
 public class HubData
 {
-    /// <summary>1 = base version (4 starter tiles). 2 = vibrant Home (11 tiles). 3 = Planner (+ "Up next" tile).</summary>
-    public const int CurrentVersion = 3;
+    /// <summary>1 = base version (4 starter tiles). 2 = vibrant Home (11 tiles). 3 = Planner (+ "Up next" tile). 4 = News tile (and weather back if it was removed).</summary>
+    public const int CurrentVersion = 4;
 
     public int Version { get; set; } = CurrentVersion;
     public List<Page> Pages { get; set; } = [];
@@ -49,7 +49,7 @@ public class HubData
         ("clock", 0, 1, TileSize.Large), ("focus", 2, 1, TileSize.Tall), ("system", 3, 1, TileSize.Tall),
         ("todo", 4, 1, TileSize.Tall), ("habits", 5, 1, TileSize.Tall),
         ("note", 0, 3, TileSize.Wide), ("links", 2, 3, TileSize.Wide), ("countdown", 4, 3, TileSize.Wide),
-        ("upnext", 0, 4, TileSize.Wide),
+        ("upnext", 0, 4, TileSize.Wide), ("news", 2, 4, TileSize.Wide),
     ];
 
     /// <summary>The version-1 default Home, used to tell whether the user ever rearranged it.</summary>
@@ -70,6 +70,11 @@ public class HubData
     {
         if (Version < 2 && Pages.Count > 0) UpgradeHomeTo2(Pages[0]);
         if (Version < 3 && Pages.Count > 0) AddIfMissing(Pages[0], "upnext", TileSize.Wide);
+        if (Version < 4 && Pages.Count > 0)
+        {
+            AddIfMissing(Pages[0], "weather", TileSize.Wide);
+            AddIfMissing(Pages[0], "news", TileSize.Wide);
+        }
         if (Version < CurrentVersion) Version = CurrentVersion;
     }
 
