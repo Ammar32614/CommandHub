@@ -69,6 +69,7 @@ public partial class App : Application
         ApplyTheme(Data.Settings.Theme);
         Updater = new Updates();
 
+        AddOns.AddOnManager.Startup(); // before the window builds its sidebar
         MainWindow = new MainWindow();
         // Launched by "Start with Windows": stay out of the way until needed.
         if (e.Args.Contains(StartupManager.MinimizedFlag)) MainWindow.WindowState = WindowState.Minimized;
@@ -109,6 +110,23 @@ public partial class App : Application
     public static void CommitOpenEdits() => CommittingEdits?.Invoke();
 
     /// <summary>Writes anything still waiting to be saved.</summary>
+    /// <summary>Saves, then starts a fresh copy and closes this one (to finish updating or removing add-ons).</summary>
+    public static void Restart()
+    {
+        FlushSaves();
+        var app = (App)Current;
+        // Let go of "one copy at a time" first, or the new copy would just bring this one forward and quit.
+        try { app._instanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
+        app._instanceMutex?.Dispose();
+        app._instanceMutex = null;
+        if (Environment.ProcessPath is { } exe)
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false }); }
+            catch (System.ComponentModel.Win32Exception) { }
+        }
+        Current.Shutdown();
+    }
+
     public static void FlushSaves()
     {
         CommitOpenEdits();

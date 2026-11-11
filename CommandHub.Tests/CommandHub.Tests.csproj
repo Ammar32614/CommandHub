@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CommandHub.csproj" />
+    <ProjectReference Include="..\AddOnProjects\PlayStation\CommandHub.AddOn.PlayStation.csproj" />
   </ItemGroup>
 
 </Project>

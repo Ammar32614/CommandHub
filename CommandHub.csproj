@@ -31,9 +31,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="CommandHub.Tests/**;docs/**;.superpowers/**" />
-    <None Remove="CommandHub.Tests/**;docs/**;.superpowers/**" />
-    <Page Remove="CommandHub.Tests/**" />
+    <Compile Remove="CommandHub.Tests/**;docs/**;.superpowers/**;AddOnProjects/**" />
+    <None Remove="CommandHub.Tests/**;docs/**;.superpowers/**;AddOnProjects/**" />
+    <Page Remove="CommandHub.Tests/**;AddOnProjects/**" />
   </ItemGroup>
 
 </Project>

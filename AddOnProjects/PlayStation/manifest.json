@@ -1,0 +1,11 @@
+{
+  "id": "playstation",
+  "name": "PlayStation",
+  "version": "1.0.0",
+  "api": 1,
+  "minHost": "1.2.0",
+  "entry": "playstation.dll",
+  "icon": "",
+  "blurb": "Compare PlayStation Store prices in the US, Turkey and Ukraine, in rupees.",
+  "description": "A wishlist that checks prices once a day and remembers the lowest each game has been, the latest deals in each store, and search. Reads prices from the official PlayStation Store; rates from the central banks of Turkey and Ukraine."
+}
