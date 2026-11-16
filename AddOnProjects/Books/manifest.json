@@ -1,0 +1,11 @@
+{
+  "id": "books",
+  "name": "Books",
+  "version": "1.0.0",
+  "api": 1,
+  "minHost": "1.3.0",
+  "entry": "books.dll",
+  "icon": "\uE736",
+  "blurb": "What you are reading, want to read and have read, with a yearly goal.",
+  "description": "Find books on Open Library, track your page, keep quotes, rate what you finish and see your reading year."
+}

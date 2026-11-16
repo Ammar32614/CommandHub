@@ -1,0 +1,11 @@
+{
+  "id": "flashcards",
+  "name": "Flashcards",
+  "version": "1.0.0",
+  "api": 1,
+  "minHost": "1.3.0",
+  "entry": "flashcards.dll",
+  "icon": "\uE8D2",
+  "blurb": "Learn a language a few cards a day, with spaced repetition.",
+  "description": "Decks of words with readings and example sentences. Cards come back just before you would forget them (like Anki). Paste a word list to make a deck in seconds; starts with a Hiragana deck."
+}
