@@ -18,6 +18,7 @@
     <ProjectReference Include="..\CommandHub.csproj" />
     <ProjectReference Include="..\AddOnProjects\PlayStation\CommandHub.AddOn.PlayStation.csproj" />
     <ProjectReference Include="..\AddOnProjects\Media\CommandHub.AddOn.Media.csproj" />
+    <ProjectReference Include="..\AddOnProjects\Grades\CommandHub.AddOn.Grades.csproj" />
   </ItemGroup>
 
 </Project>
