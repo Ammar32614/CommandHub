@@ -350,13 +350,34 @@ public sealed class MediaPage : UserControl
         var existing = _library.Find(f.Key);
         if (existing is null)
         {
-            var add = Styled("+ Watchlist", "GhostButton", async (_, _) => await _library.Add(f, WatchStatus.PlanToWatch), new Thickness(10, 3, 10, 3));
-            System.Windows.Automation.AutomationProperties.SetName(add, $"Add {f.Title} to watchlist");
-            add.HorizontalAlignment = HorizontalAlignment.Left;
-            add.Margin = new Thickness(0, 6, 0, 0);
-            s.Children.Add(add);
+            // Put it straight on the right list: no need to go through the watchlist first.
+            var picks = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+            foreach (var status in new[] { WatchStatus.PlanToWatch, WatchStatus.Watching, WatchStatus.Completed, WatchStatus.Dropped })
+            {
+                var chip = new Border { Padding = new Thickness(8, 2, 8, 3), CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 4, 4) };
+                chip.SetResourceReference(Border.BorderBrushProperty, status == WatchStatus.PlanToWatch ? "AccentBrush" : "Hairline");
+                chip.Child = T((status == WatchStatus.PlanToWatch ? "+ " : "") + MediaLogic.StatusName(status), 11, status == WatchStatus.PlanToWatch ? "Text" : "Muted");
+                var b = Bare(chip, $"Add {f.Title} as {MediaLogic.StatusName(status)}");
+                var captured = status;
+                b.Click += async (_, _) =>
+                {
+                    var item = await _library.Add(f, captured);
+                    // Watching: say which episode you're on. Completed: a chance to rate it.
+                    if (captured is WatchStatus.Watching or WatchStatus.Completed) Details(item, captured == WatchStatus.Completed ? "FINISHED: HOW WAS IT?" : "WHICH EPISODE ARE YOU ON?");
+                };
+                picks.Children.Add(b);
+            }
+            s.Children.Add(picks);
         }
-        else s.Children.Add(Spaced(T("✓ " + MediaLogic.StatusName(existing.Status), 11, "AccentBrush"), 6, 0));
+        else
+        {
+            // Already on a list: click to change its status, progress or rating.
+            var change = Bare(T("✓ " + MediaLogic.StatusName(existing.Status) + "  ·  change", 11, "AccentBrush"), $"Change {f.Title}");
+            change.HorizontalAlignment = HorizontalAlignment.Left;
+            change.Margin = new Thickness(0, 6, 0, 0);
+            change.Click += (_, _) => Details(existing);
+            s.Children.Add(change);
+        }
         return new Border { Child = s, Margin = new Thickness(0, 0, 18, 22), VerticalAlignment = VerticalAlignment.Top };
     }
 
