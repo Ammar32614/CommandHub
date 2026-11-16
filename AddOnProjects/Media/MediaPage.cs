@@ -552,7 +552,8 @@ public sealed class MediaPage : UserControl
         // Note
         form.Children.Add(Spaced(Label("NOTE", "Muted"), 16, 6));
         var note = Field("Thoughts, where to watch, who recommended it…", item.Note, "Note");
-        note.TextChanged += (_, _) => _library.SetNote(item, note.Text);
+        note.TextChanged += (_, _) => item.Note = note.Text;
+        note.LostFocus += (_, _) => _library.SetNote(item, note.Text); // saved when you leave the box
         form.Children.Add(note);
 
         var footer = new DockPanel { Margin = new Thickness(0, 18, 0, 0) };

@@ -56,12 +56,14 @@ public static class Cards
         switch (a)
         {
             case Flashcards.Answer.Again:
-                return (0, Math.Max(1.3, ease - 0.2));
+                // A card still being learned (never remembered yet) keeps its ease: early stumbles are normal.
+                return (0, c.Reps == 0 && c.Lapses == 0 ? ease : Math.Max(1.3, ease - 0.2));
             case Flashcards.Answer.Hard:
                 interval = c.Reps == 0 ? 1 : Math.Max(c.IntervalDays + 1, (int)Math.Round(c.IntervalDays * 1.2));
-                return (interval, Math.Max(1.3, ease - 0.15));
+                return (interval, c.Reps == 0 && c.Lapses == 0 ? ease : Math.Max(1.3, ease - 0.15));
             case Flashcards.Answer.Good:
-                interval = c.Reps switch { 0 => 1, 1 => 3, _ => Math.Max(c.IntervalDays + 1, (int)Math.Round(c.IntervalDays * ease)) };
+                // Never shorter than the gap it already had (after an Easy, say).
+                interval = c.Reps switch { 0 => 1, 1 => Math.Max(3, c.IntervalDays + 1), _ => Math.Max(c.IntervalDays + 1, (int)Math.Round(c.IntervalDays * ease)) };
                 return (interval, ease);
             default:
                 interval = c.Reps == 0 ? 4 : Math.Max(c.IntervalDays + 2, (int)Math.Round(c.IntervalDays * ease * 1.3));

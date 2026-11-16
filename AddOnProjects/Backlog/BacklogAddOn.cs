@@ -161,7 +161,7 @@ public sealed class BacklogPage : UserControl
         big.Margin = new Thickness(-2, 10, 0, 6);
         left.Children.Add(big);
         var line = new List<string>();
-        if (s.BacklogHours is { } bh) line.Add($"about {bh:0} hours to clear it");
+        if (s.BacklogHours is { } bh) line.Add(s.Estimated == s.Backlog ? $"about {bh:0} hours to clear it" : $"at least {bh:0} hours to clear it ({s.Estimated} of {s.Backlog} estimated)");
         line.Add($"{BacklogLogic.Hours(s.HoursThisWeek)} played this week");
         line.Add($"{s.FinishedThisYear} finished this year");
         if (s.Platinums > 0) line.Add($"{s.Platinums} platinum{(s.Platinums == 1 ? "" : "s")}");
@@ -530,7 +530,8 @@ internal sealed class GameSheet(Library lib, Game game, string eyebrow = "")
         notes.AcceptsReturn = true;
         notes.TextWrapping = TextWrapping.Wrap;
         notes.MinHeight = 60;
-        notes.TextChanged += (_, _) => { game.Notes = notes.Text; Quiet(); };
+        notes.TextChanged += (_, _) => game.Notes = notes.Text;
+        notes.LostFocus += (_, _) => Quiet(); // saved when you leave the box, not on every key
         _root.Children.Add(notes);
 
         var footer = new DockPanel { Margin = new Thickness(0, 18, 0, 0) };

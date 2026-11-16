@@ -197,6 +197,14 @@ public partial class MainWindow : Window
 
     public void HideSheet()
     {
+        // A text box that saves when you leave it must get the chance to, however the sheet is closed
+        // (Escape, a click outside): move focus off it before the sheet goes.
+        if (Sheet.IsKeyboardFocusWithin)
+        {
+            Sheet.Focusable = true;
+            Sheet.Focus();
+            Sheet.Focusable = false;
+        }
         Sheet.Content = null;
         Sheet.Visibility = Visibility.Collapsed;
     }

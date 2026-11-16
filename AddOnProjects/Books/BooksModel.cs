@@ -76,7 +76,12 @@ public static class BookLogic
         {
             b.Started ??= today;
             b.Finished ??= today;
-            if (b.Pages is > 0) b.CurrentPage = b.Pages.Value;
+            if (b.Pages is > 0 && b.CurrentPage < b.Pages && b.CurrentPage > 0)
+            {
+                LogPages(b, b.Pages.Value - b.CurrentPage, today); // the pages you just finished count too
+                b.CurrentPage = b.Pages.Value;
+            }
+            else if (b.Pages is > 0) b.CurrentPage = b.Pages.Value;
         }
         else b.Finished = null;
     }
@@ -88,14 +93,22 @@ public static class BookLogic
         var value = Math.Clamp(page, 0, max);
         var delta = value - b.CurrentPage;
         b.CurrentPage = value;
-        if (delta > 0)
-        {
-            var day = b.Log.FirstOrDefault(d => d.Date == today);
-            if (day is null) b.Log.Add(day = new PageDay { Date = today });
-            day.Pages += delta;
-        }
+        LogPages(b, delta, today);
         if (value > 0 && b.Status == ReadStatus.WantToRead) SetStatus(b, ReadStatus.Reading, today);
         if (b.Pages is > 0 && value >= b.Pages && b.Status != ReadStatus.Read) SetStatus(b, ReadStatus.Read, today);
+    }
+
+    /// <summary>Adds (or, for a correction, takes back) pages in today's count, never below zero.</summary>
+    private static void LogPages(Book b, int delta, DateOnly today)
+    {
+        if (delta == 0) return;
+        var day = b.Log.FirstOrDefault(d => d.Date == today);
+        if (day is null)
+        {
+            if (delta < 0) return;
+            b.Log.Add(day = new PageDay { Date = today });
+        }
+        day.Pages = Math.Max(0, day.Pages + delta);
     }
 
     public static double Progress(Book b) => b.Pages is > 0 ? Math.Clamp(b.CurrentPage / (double)b.Pages.Value, 0, 1) : 0;

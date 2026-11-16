@@ -257,6 +257,7 @@ internal sealed class StudySheet(Store store, Deck deck)
             System.Windows.Automation.AutomationProperties.SetName(show, "Show answer");
             show.HorizontalAlignment = HorizontalAlignment.Center;
             _root.Children.Add(show);
+            KeepKeys();
             return;
         }
         var back = T(card.Back, 26, "Text", FontWeights.SemiBold);
@@ -291,7 +292,11 @@ internal sealed class StudySheet(Store store, Deck deck)
         }
         row.Margin = new Thickness(0, 22, 0, 0);
         _root.Children.Add(row);
+        KeepKeys();
     }
+
+    /// <summary>Buttons that were clicked are gone after a redraw: give the keys (Space, 1–4) back to the card.</summary>
+    private void KeepKeys() => _root.Dispatcher.BeginInvoke(() => _root.Focus(), DispatcherPriority.Input);
 
     private sealed class UniformGrid4 : System.Windows.Controls.Primitives.UniformGrid { public UniformGrid4() { Columns = 4; } }
 }

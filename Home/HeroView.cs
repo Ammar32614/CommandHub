@@ -300,9 +300,12 @@ public sealed class HeroView : UserControl
             foreach (var t in targets)
             {
                 if (t == target) continue;
-                var left = t.Button.TranslatePoint(new Point(0, 0), row).X;
+                var corner = t.Button.TranslatePoint(new Point(0, 0), row);
+                var left = corner.X;
                 var w = t.Button.ActualWidth;
                 if (pos.X < left || pos.X > left + w) continue;
+                // A long row wraps: only squares on the same line as the pointer count.
+                if (pos.Y < corner.Y || pos.Y > corner.Y + t.Button.ActualHeight) continue;
                 over = t;
                 double f = (pos.X - left) / Math.Max(1, w);
                 place = t.Kind == DropKind.Back ? Place.Into

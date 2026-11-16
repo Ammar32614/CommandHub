@@ -184,6 +184,14 @@ internal sealed class CourseSheet(Book book, Semester semester, Course course)
             Quiet();
             Build();
         }), 6));
+        hrow.Children.Add(Spaced(T("of", 11, "Muted"), 10));
+        hrow.Children.Add(Spaced(Box("all", part.Expected?.ToString() ?? "", $"How many {part.Name} in all", 44, t =>
+        {
+            part.Expected = int.TryParse(t.Trim(), out var v) && v is > 0 and <= 50 ? v : null;
+            Quiet();
+            Build();
+        }), 6));
+        ((FrameworkElement)hrow.Children[^1]).ToolTip = "How many there will be in all (e.g. 4 quizzes), so this part only counts for what has been marked so far";
         head.Children.Add(hrow);
         s.Children.Add(head);
 

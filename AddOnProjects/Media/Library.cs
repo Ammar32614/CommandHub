@@ -65,9 +65,9 @@ public sealed class Library(IAddOnHost host)
             item.NextEpisodeNumber = info.NextNumber;
             // A finished show's length is known; a running one's is what has aired so far.
             if (info.Status == "Ended") item.TotalEpisodes = info.AiredEpisodes;
+            else item.TotalEpisodes = null;
             // Marked finished before its length was known: count every episode as watched.
             if (item.Status == WatchStatus.Completed && item.TotalEpisodes is > 0) item.Progress = item.TotalEpisodes.Value;
-            else item.TotalEpisodes = null;
             if (item.Image.Length == 0) item.Image = info.Image;
             Commit();
         }

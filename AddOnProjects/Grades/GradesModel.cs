@@ -35,6 +35,8 @@ public sealed class Part
     public decimal Weight { get; set; }
     /// <summary>Drop this many of the lowest marks (e.g. "best 3 of 4 quizzes" = drop 1).</summary>
     public int DropLowest { get; set; }
+    /// <summary>How many there will be in all (e.g. 4 quizzes), so a part only counts for what's been marked. Blank = the marks entered so far.</summary>
+    public int? Expected { get; set; }
     public List<Mark> Marks { get; set; } = [];
 }
 
@@ -92,8 +94,24 @@ public static class GradeLogic
     public static List<Mark> Counted(Part part)
     {
         var graded = part.Marks.Where(m => m.Obtained is not null && m.Total > 0).ToList();
-        int drop = Math.Clamp(part.DropLowest, 0, Math.Max(0, graded.Count - 1));
+        // "Best 3 of 4": only drop once more than 3 are in, so an early low mark isn't thrown away too soon.
+        int planned = Math.Max(part.Expected ?? 0, part.Marks.Count);
+        int keep = Math.Max(1, planned - Math.Max(0, part.DropLowest));
+        int drop = Math.Clamp(graded.Count - keep, 0, Math.Max(0, graded.Count - 1));
         return graded.OrderBy(m => m.Obtained!.Value / m.Total).Skip(drop).ToList();
+    }
+
+    /// <summary>
+    /// How much of a part has been marked (0–1): the counted marks out of how many will count in the end.
+    /// With 4 quizzes planned (best 3 count) and 2 marked, that's 2/3.
+    /// </summary>
+    public static decimal MarkedShare(Part part)
+    {
+        int counted = Counted(part).Count;
+        if (counted == 0) return 0;
+        int planned = Math.Max(part.Expected ?? 0, part.Marks.Count);
+        int willCount = Math.Max(1, planned - Math.Max(0, part.DropLowest));
+        return Math.Min(1, counted / (decimal)willCount);
     }
 
     /// <summary>Your percentage in a part (marks summed, so a 20-mark quiz counts twice a 10-mark one), or null.</summary>
@@ -123,8 +141,9 @@ public static class GradeLogic
         {
             if (PartPercent(p) is { } mine)
             {
-                graded += p.Weight;
-                earned += mine * p.Weight / 100;
+                var w = p.Weight * MarkedShare(p);
+                graded += w;
+                earned += mine * w / 100;
             }
             if (PartClassPercent(p) is { } cls)
             {

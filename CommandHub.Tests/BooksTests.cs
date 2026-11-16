@@ -13,13 +13,22 @@ public class BooksTests
         BookLogic.SetPage(b, 40, Today);
         Assert.Equal(ReadStatus.Reading, b.Status);
         Assert.Equal(Today, b.Started);
-        BookLogic.SetPage(b, 30, Today); // going back logs nothing
-        Assert.Equal(40, b.Log.Single().Pages);
+        BookLogic.SetPage(b, 30, Today); // a correction takes those pages back
+        Assert.Equal(30, b.Log.Single().Pages);
         BookLogic.SetPage(b, 999, Today.AddDays(1));
         Assert.Equal(496, b.CurrentPage);
         Assert.Equal(ReadStatus.Read, b.Status);
         Assert.Equal(Today.AddDays(1), b.Finished);
         Assert.Equal(466, b.Log[1].Pages);
+        // Marking a part-read book Read counts the pages you jumped; one added as read long ago doesn't.
+        var c = new Book { Pages = 100 };
+        BookLogic.SetPage(c, 20, Today);
+        BookLogic.SetStatus(c, ReadStatus.Read, Today);
+        Assert.Equal(100, c.Log.Single().Pages);
+        var old = new Book { Pages = 300 };
+        BookLogic.SetStatus(old, ReadStatus.Read, Today);
+        Assert.Empty(old.Log);
+        Assert.Equal(300, old.CurrentPage);
     }
 
     [Fact]

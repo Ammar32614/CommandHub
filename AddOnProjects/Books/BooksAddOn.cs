@@ -546,7 +546,8 @@ internal sealed class BookSheet(Shelf shelf, Book book)
         notes.AcceptsReturn = true;
         notes.TextWrapping = TextWrapping.Wrap;
         notes.MinHeight = 60;
-        notes.TextChanged += (_, _) => { book.Notes = notes.Text; Quiet(); };
+        notes.TextChanged += (_, _) => book.Notes = notes.Text;
+        notes.LostFocus += (_, _) => Quiet(); // saved when you leave the box, not on every key
         _root.Children.Add(notes);
 
         var footer = new DockPanel { Margin = new Thickness(0, 18, 0, 0) };

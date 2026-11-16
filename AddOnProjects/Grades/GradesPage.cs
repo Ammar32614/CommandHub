@@ -317,6 +317,10 @@ internal sealed class ScaleSheet(Book book)
                 bands.Add(new GradeBand { Letter = l.Text.Trim(), Min = min, Points = pts });
             }
             if (bands.Count == 0) { error.Text = "Keep at least one grade."; return; }
+            // A course whose final grade uses a letter that's gone would quietly drop out of the GPA.
+            var missing = book.Data.Semesters.SelectMany(s => s.Courses).Where(c => c.FinalGrade.Trim().Length > 0)
+                .Select(c => c.FinalGrade.Trim()).Where(g => !bands.Any(b => b.Letter.Equals(g, StringComparison.OrdinalIgnoreCase))).Distinct().ToList();
+            if (missing.Count > 0) { error.Text = $"{string.Join(", ", missing)} is still a course's final grade. Keep it, or change that grade first."; return; }
             if (bands.All(b => b.Min > 0)) bands.Add(new GradeBand { Letter = "F", Min = 0, Points = 0 });
             book.Data.Scale = bands.OrderByDescending(b => b.Min).ToList();
             book.Save();

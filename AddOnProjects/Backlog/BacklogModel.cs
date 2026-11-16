@@ -39,7 +39,7 @@ public sealed class Session
 /// <summary>A game on the PlayStation add-on's wishlist, offered here once you've bought it.</summary>
 public sealed record Wished(string ConceptId, string Name, string Image);
 
-public sealed record BacklogStats(int Owned, int Backlog, decimal? BacklogHours, int Playing, int FinishedThisYear, int Platinums, decimal HoursThisWeek, decimal HoursThisMonth, decimal HoursTotal);
+public sealed record BacklogStats(int Owned, int Backlog, decimal? BacklogHours, int Estimated, int Playing, int FinishedThisYear, int Platinums, decimal HoursThisWeek, decimal HoursThisMonth, decimal HoursTotal);
 
 public static class BacklogLogic
 {
@@ -80,10 +80,10 @@ public static class BacklogLogic
         var week = today.AddDays(-6);
         var month = new DateOnly(today.Year, today.Month, 1);
         var backlog = games.Where(g => g.Status == GameStatus.Backlog).ToList();
-        decimal? backlogHours = backlog.Count > 0 && backlog.All(g => g.EstimateHours is not null) ? backlog.Sum(g => g.EstimateHours!.Value)
-            : backlog.Any(g => g.EstimateHours is not null) ? backlog.Sum(g => g.EstimateHours ?? 0) : null;
+        int estimated = backlog.Count(g => g.EstimateHours is not null);
+        decimal? backlogHours = estimated > 0 ? backlog.Sum(g => g.EstimateHours ?? 0) : null;
         return new BacklogStats(
-            games.Count, backlog.Count, backlogHours, games.Count(g => g.Status == GameStatus.Playing),
+            games.Count, backlog.Count, backlogHours, estimated, games.Count(g => g.Status == GameStatus.Playing),
             games.Count(g => g.Status is GameStatus.Finished or GameStatus.Platinum && g.Finished?.Year == today.Year),
             games.Count(g => g.Status == GameStatus.Platinum),
             games.Sum(g => g.Sessions.Where(s => s.Date >= week && s.Date <= today).Sum(s => s.Hours)),
@@ -105,6 +105,8 @@ public static class BacklogLogic
     public static List<Wished> ReadPlayStationWishlist(string json, IEnumerable<Game> have)
     {
         var owned = have.Select(g => g.ConceptId).Where(c => c.Length > 0).ToHashSet();
+        // Games added from search have no concept id: match those by title.
+        var titles = have.Select(g => Simple(g.Title)).Where(t => t.Length > 0).ToHashSet();
         var list = new List<Wished>();
         try
         {
@@ -114,13 +116,15 @@ public static class BacklogLogic
             {
                 string S(string n) => item.ValueKind == JsonValueKind.Object && item.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
                 var id = S("conceptId");
-                if (id.Length == 0 || owned.Contains(id) || list.Any(x => x.ConceptId == id)) continue;
+                if (id.Length == 0 || owned.Contains(id) || titles.Contains(Simple(S("name"))) || list.Any(x => x.ConceptId == id)) continue;
                 list.Add(new Wished(id, S("name"), S("image")));
             }
         }
         catch (JsonException) { }
         return list;
     }
+
+    private static string Simple(string s) => new string((s ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
     /// <summary>"12.5 h", "45 min".</summary>
     public static string Hours(decimal h) => h < 1 && h > 0 ? $"{Math.Round(h * 60)} min" : $"{h:0.#} h";

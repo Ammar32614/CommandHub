@@ -79,4 +79,25 @@ public class GradesTests
         Assert.Equal("Assignment 1", GradeLogic.NextMarkName(c.Parts[1]));
         Assert.Equal("Final", GradeLogic.NextMarkName(c.Parts[3]));
     }
+
+    [Fact]
+    public void Expected_OnlyCountsWhatsBeenMarked_AndDropsWaitForTheRest()
+    {
+        var c = GradeLogic.NewCourse("x");
+        var quizzes = c.Parts[0];           // 10%
+        quizzes.Expected = 4;
+        quizzes.DropLowest = 1;             // best 3 of 4
+        quizzes.Marks.Add(new Mark { Obtained = 5, Total = 10 });
+        quizzes.Marks.Add(new Mark { Obtained = 9, Total = 10 });
+        // Only 2 of the 4 are in: nothing dropped yet (70%), and they're 2 of the 3 that will count.
+        Assert.Equal(70m, GradeLogic.PartPercent(quizzes));
+        var s = GradeLogic.Standing(c);
+        Assert.Equal(Math.Round(10m * 2 / 3, 4), Math.Round(s.WeightGraded, 4));
+        Assert.True(s.Remaining > 90);
+        // All 4 in: the lowest goes.
+        quizzes.Marks.Add(new Mark { Obtained = 8, Total = 10 });
+        quizzes.Marks.Add(new Mark { Obtained = 10, Total = 10 });
+        Assert.Equal(90m, GradeLogic.PartPercent(quizzes));
+        Assert.Equal(10m, GradeLogic.Standing(c).WeightGraded);
+    }
 }
