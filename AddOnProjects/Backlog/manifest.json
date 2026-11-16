@@ -1,0 +1,11 @@
+{
+  "id": "backlog",
+  "name": "Game backlog",
+  "version": "1.0.0",
+  "api": 1,
+  "minHost": "1.3.0",
+  "entry": "backlog.dll",
+  "icon": "\uE8F1",
+  "blurb": "The games you own: playing, backlog, finished and platinum, with hours.",
+  "description": "Track every game you own with its status, hours played and your rating, see your backlog in hours, and get a pick for what to play next. Moves games across from the PlayStation add-on wishlist when you buy them."
+}

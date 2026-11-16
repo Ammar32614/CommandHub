@@ -259,7 +259,9 @@ public sealed class BooksPage : UserControl
                 row.Children.Add(T(b.Pages is > 0 ? $"p. {b.CurrentPage} / {b.Pages}" : $"p. {b.CurrentPage}", 11, "Muted"));
                 s.Children.Add(row);
                 if (b.Pages is > 0) s.Children.Add(Bar(BookLogic.Progress(b)));
-                if (BookLogic.DaysToFinish(b, pace) is { } days) s.Children.Add(Gap(T(days <= 1 ? "Done about tomorrow at your pace" : $"Done in about {days} days at your pace", 10, "AccentBrush"), 4, 0));
+                // Only once there's a real pace to go on (a few reading days this month).
+                bool steady = Books.SelectMany(x => x.Log).Where(d => d.Date > Shelf.Today.AddDays(-30) && d.Pages > 0).Select(d => d.Date).Distinct().Count() >= 3;
+                if (steady && BookLogic.DaysToFinish(b, pace) is { } days) s.Children.Add(Gap(T(days <= 1 ? "Done about tomorrow at your pace" : $"Done in about {days} days at your pace", 10, "AccentBrush"), 4, 0));
             }
             else if (b.Status == ReadStatus.Read && b.Finished is { } f) s.Children.Add(T($"Finished {f:d MMM}", 11, "Muted"));
             grid.Children.Add(new Border { Child = s, Margin = new Thickness(0, 0, 18, 22), VerticalAlignment = VerticalAlignment.Top });

@@ -15,6 +15,12 @@ public sealed class AboutPage : UserControl
     /// <summary>What changed in each version, newest first. Shown on this page.</summary>
     public static readonly (string Version, string[] Changes)[] History =
     [
+        ("1.3.0",
+        [
+            "Drag the links on Home sideways to reorder them, or drop one on a group to put it inside.",
+            "New add-ons: Grades (marks beside class averages, GPA and CGPA), Game backlog, Books and Flashcards.",
+            "Media: choose Watching, Completed or Dropped straight from search.",
+        ]),
         ("1.2.0",
         [
             "Add-ons: optional tabs you install from Settings. The first two are a PlayStation Store price tracker and a media tracker.",

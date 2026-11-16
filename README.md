@@ -16,7 +16,7 @@ It's a sibling to [Stint](../Timer%20app). It has the same look and the same the
   - **To-do list** lets you add items with Enter, tick them off, and delete them.
   - **Habits** shows the last 7 days as dots for each habit. Click a dot to tick that day.
   - **Quick note** saves as you type.
-  - **Quick links** open a website, a folder or an app in one click. Give links a **group** ("Uni", "Games") and they're shown together; on Home a group is one square that opens to its links, with **Open all**.
+  - **Quick links** open a website, a folder or an app in one click. Give links a **group** ("Uni", "Games") and they're shown together; on Home a group is one square that opens to its links, with **Open all**. Drag the squares on Home sideways to reorder them; drop a link on the middle of a group to put it inside (on its edge, it goes before or after). Inside an open group, drag to reorder, or drop on the back square to take a link out.
   - **Countdowns** count the days to the things you're looking forward to.
   - **Up next** shows the next few things in the Planner.
   - **News** shows the latest headlines from sources you pick (BBC News, Dawn, Express Tribune, Geo News, ESPNcricinfo, The Verge, Ars Technica, Hacker News, the PlayStation Blog) or any RSS feed you add. It refreshes every 30 minutes and keeps the last headlines for when you're offline.
@@ -109,10 +109,32 @@ Compares PlayStation Store prices in the **United States, Turkey and Ukraine**, 
 Tracks the anime, shows and movies you watch.
 
 - **Discover** searches anime (from AniList, linked to MyAnimeList) or movies and shows (from IMDb), and lists what's airing this season.
+- Add a result straight to **Watchlist**, **Watching** (it asks which episode you're on), **Completed** (it asks for a rating) or **Dropped**; click a title already on a list to change it.
 - **Watching**, **Watchlist** and **Completed**, with episode progress (**+1** on each card), your rating out of 10 and a note.
 - **Coming up this week** shows when the next episodes air (AniList for anime, TVmaze for shows), refreshed once a day, with a note on the day a new episode is out.
 - **Import MyAnimeList**: on MyAnimeList use *Profile › Export list*, then pick the downloaded file. Your statuses, progress and scores come across.
 - **Stats** (episodes this week and month, hours watched, ratings) and **Pick for tonight** for when you can't decide.
+
+### Grades
+
+Your marks, entered by you, course by course.
+
+- Each course has weighted parts (it starts with Quizzes 10%, Assignments 15%, Mid 25%, Final 50%; change them to your course outline) and **drop lowest** for "best 3 of 4" quizzes.
+- Each mark (Assignment 1, Quiz 3, Mid…) has your marks, the total, and the **class average** beside it, with how far above or below the class you are.
+- Each course shows your running percentage and grade against the class's, and **what you need on the rest** for every grade.
+- **Semester GPA** and **CGPA**, credit-weighted, on a grading scale you can edit (it starts with a common 4.0 scale). Enter the final grade once it's out and it's used instead of the projection.
+
+### Game backlog
+
+Every game you own: **Playing**, **Backlog**, **Finished**, **Platinum** or **Shelved**, with hours played (**+1 h** on each card), an estimate of how long it takes, your rating and notes. Search the PlayStation Store for covers or add any game by hand. **What next?** picks from your backlog, or **Something short** picks the quickest. With the PlayStation add-on, games on your wishlist appear here with **I bought it**.
+
+### Books
+
+Find books on Open Library (or add one by hand), then **Reading**, **Want to read** and **Read** by year. Track your page (**+10**), rate, save **quotes** with their page, and set a **yearly goal**; it tells you whether you're on pace and, once you've been reading a few days, when you'll finish.
+
+### Flashcards
+
+Learn vocabulary with spaced repetition, like Anki: cards come back just before you'd forget them. Study with **Space** to show the answer and **1–4** for Again, Hard, Good or Easy (each shows when you'll see the card next). Add cards one at a time, or paste a list (one per line: `front ; back ; reading ; example`, or tab-separated from a spreadsheet). Starts with a Hiragana deck; 10 new cards a day per deck, plus a daily streak.
 
 ### Publishing add-ons
 
