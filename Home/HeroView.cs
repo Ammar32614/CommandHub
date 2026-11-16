@@ -58,7 +58,7 @@ public sealed class HeroView : UserControl
 
     private void OnDataChanged()
     {
-        if (_pinning || IsKeyboardFocusWithin) { _stale = true; return; }
+        if (_pinning || IsKeyboardFocusWithin || _drag is { Active: true }) { _stale = true; return; }
         Render();
     }
 
@@ -197,7 +197,18 @@ public sealed class HeroView : UserControl
             System.Windows.Automation.AutomationProperties.SetName(back, $"Close group {open.Group}");
             back.Click += (_, _) => { _openGroup = null; Render(); };
             row.Children.Add(back);
-            foreach (var link in open.Links) row.Children.Add(LinkSquare(link));
+            var targets = new List<DropTarget> { new(back, DropKind.Back, -1) };
+            for (int i = 0; i < open.Links.Count; i++)
+            {
+                var sq = LinkSquare(open.Links[i]);
+                row.Children.Add(sq);
+                targets.Add(new DropTarget(sq, DropKind.Link, i));
+            }
+            var groupName = open.Group!;
+            foreach (var t in targets.Where(t => t.Kind == DropKind.Link))
+                Draggable(t, row, targets, (from, onto, place) => place == Place.Into
+                    ? HeroData.UpdateLinks(_page, l => LinksContent.TakeOutOfGroup(l, groupName, from.Index))
+                    : HeroData.UpdateLinks(_page, l => LinksContent.MoveWithinGroup(l, groupName, from.Index, To(from, onto, place))));
             if (open.Links.Count > 1)
             {
                 var all = Square("\uE8A7", "Open all", $"Open all {open.Links.Count} links in {open.Group}");
@@ -207,19 +218,139 @@ public sealed class HeroView : UserControl
             return row;
         }
         _openGroup = null;
+        var rowTargets = new List<DropTarget>();
+        int index = 0;
         foreach (var entry in entries.Take(7))
         {
-            if (entry.Group is null) { row.Children.Add(LinkSquare(entry.Links[0])); continue; }
+            if (entry.Group is null)
+            {
+                var sq = LinkSquare(entry.Links[0]);
+                row.Children.Add(sq);
+                rowTargets.Add(new DropTarget(sq, DropKind.Link, index++));
+                continue;
+            }
             var g = entry.Group;
-            var square = Square("\uE8B7", g, $"{entry.Links.Count} {(entry.Links.Count == 1 ? "link" : "links")}: " + string.Join(", ", entry.Links.Select(l => l.Name)));
+            var square = Square("\uE8B7", g, $"{entry.Links.Count} {(entry.Links.Count == 1 ? "link" : "links")}: " + string.Join(", ", entry.Links.Select(l => l.Name)) + ". Drop a link here to add it.");
             System.Windows.Automation.AutomationProperties.SetName(square, $"Open group {g}");
             square.Click += (_, _) => { _openGroup = g; Render(); };
             row.Children.Add(square);
+            rowTargets.Add(new DropTarget(square, DropKind.Group, index++, g));
         }
+        foreach (var t in rowTargets)
+            Draggable(t, row, rowTargets, (from, onto, place) =>
+                // A link dropped on the middle of a group goes into it; on an edge it moves before or after.
+                place == Place.Into
+                    ? HeroData.UpdateLinks(_page, l => LinksContent.MoveIntoGroup(l, from.Index, onto.Group!))
+                    : HeroData.UpdateLinks(_page, l => LinksContent.MoveEntry(l, from.Index, To(from, onto, place))));
         var pin = Square("\uE710", "Pin a link", "Add a website, folder or app here");
         pin.Click += (_, _) => { _pinning = true; Render(); };
         row.Children.Add(pin);
         return row;
+    }
+
+    // ---------------- Dragging links (sideways only) ----------------
+
+    private enum DropKind { Link, Group, Back }
+    private enum Place { Before, After, Into }
+    private sealed record DropTarget(Button Button, DropKind Kind, int Index, string? Group = null);
+
+    private sealed class DragState
+    {
+        public required DropTarget From;
+        public Point Start;
+        public bool Active;
+        public DropTarget? Over;
+        public Place Place;
+    }
+
+    private DragState? _drag;
+
+    /// <summary>Where an entry ends up when dropped before or after another (indexes as they are before the move).</summary>
+    private static int To(DropTarget from, DropTarget onto, Place place) =>
+        place == Place.Before
+            ? (from.Index < onto.Index ? onto.Index - 1 : onto.Index)
+            : (from.Index < onto.Index ? onto.Index : onto.Index + 1);
+
+    /// <summary>
+    /// Lets a square be dragged left or right along its row. Dropping it on the middle of a group (or on the back
+    /// square of an open group) puts it in (or takes it out); on any other square it goes before or after it.
+    /// A plain click still opens it.
+    /// </summary>
+    private void Draggable(DropTarget target, Panel row, List<DropTarget> targets, Func<DropTarget, DropTarget, Place, bool> drop)
+    {
+        var b = target.Button;
+        b.PreviewMouseLeftButtonDown += (_, e) => _drag = new DragState { From = target, Start = e.GetPosition(row) };
+        b.PreviewMouseMove += (_, e) =>
+        {
+            if (_drag is null || _drag.From != target || e.LeftButton != MouseButtonState.Pressed) return;
+            var pos = e.GetPosition(row);
+            double dx = pos.X - _drag.Start.X;
+            if (!_drag.Active)
+            {
+                if (Math.Abs(dx) < 8) return;
+                _drag.Active = true;
+                b.CaptureMouse();
+                Panel.SetZIndex(b, 10);
+                b.Opacity = 0.85;
+            }
+            b.RenderTransform = new TranslateTransform(dx, 0); // sideways only
+            // Which square is under the pointer (by x only, along this row), and where on it?
+            DropTarget? over = null;
+            var place = Place.Before;
+            foreach (var t in targets)
+            {
+                if (t == target) continue;
+                var left = t.Button.TranslatePoint(new Point(0, 0), row).X;
+                var w = t.Button.ActualWidth;
+                if (pos.X < left || pos.X > left + w) continue;
+                over = t;
+                double f = (pos.X - left) / Math.Max(1, w);
+                place = t.Kind == DropKind.Back ? Place.Into
+                    : t.Kind == DropKind.Group && target.Kind == DropKind.Link && f is > 0.25 and < 0.75 ? Place.Into
+                    : f < 0.5 ? Place.Before : Place.After;
+                break;
+            }
+            if (over != _drag.Over || place != _drag.Place)
+            {
+                if (_drag.Over is { } was) Highlight(was.Button, null);
+                if (over is not null) Highlight(over.Button, place);
+                _drag.Over = over;
+                _drag.Place = place;
+            }
+            e.Handled = true;
+        };
+        b.PreviewMouseLeftButtonUp += (_, e) =>
+        {
+            var d = _drag;
+            _drag = null;
+            if (d is null || d.From != target || !d.Active) return;
+            e.Handled = true; // a drag isn't a click
+            b.ReleaseMouseCapture();
+            if (d.Over is { } onto && drop(d.From, onto, d.Place))
+            {
+                App.SaveNow();
+                ContentChanged?.Invoke();
+            }
+            Render();
+        };
+        b.LostMouseCapture += (_, _) =>
+        {
+            if (_drag is { Active: true } d && d.From == target) { _drag = null; Render(); } // e.g. Alt+Tab mid-drag
+        };
+    }
+
+    /// <summary>Shows where a drop would land: the whole square lights up for "into", one edge for before or after.</summary>
+    private static void Highlight(Button square, Place? place)
+    {
+        if (square.Content is not Border card) return;
+        card.BorderBrush = place is null ? Wash("TextColor", 0x22) : Wash("AccentColor", 0xFF);
+        card.BorderThickness = place switch
+        {
+            Place.Into => new Thickness(2),
+            Place.Before => new Thickness(4, 1, 1, 1),
+            Place.After => new Thickness(1, 1, 4, 1),
+            _ => new Thickness(1),
+        };
     }
 
     private Button LinkSquare(QuickLink link)

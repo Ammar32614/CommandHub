@@ -66,6 +66,20 @@ public static class HeroData
             ? LinksContent.Arrange(LinksContent.Read(t.Content).Where(l => l.Target.Trim().Length > 0))
             : [];
 
+    /// <summary>
+    /// Rearranges the page's quick links (reorder, group, ungroup). Links without a target, which the row doesn't
+    /// show, are kept at the end untouched.
+    /// </summary>
+    public static bool UpdateLinks(Page page, Func<List<QuickLink>, List<QuickLink>> change)
+    {
+        if (First(page, "links") is not { } t) return false;
+        var all = LinksContent.Read(t.Content);
+        var shown = all.Where(l => l.Target.Trim().Length > 0).ToList();
+        var hidden = all.Where(l => l.Target.Trim().Length == 0);
+        LinksContent.Write(t.Content, change(shown).Concat(hidden));
+        return true;
+    }
+
     /// <summary>Unfinished to-dos from the first to-do tile, with their index in that tile's list.</summary>
     public static List<(int Index, string Text)> OpenTodos(Page page) =>
         First(page, "todo") is { } t

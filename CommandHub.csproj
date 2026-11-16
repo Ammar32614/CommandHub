@@ -9,7 +9,7 @@
     <AssemblyName>CommandHub</AssemblyName>
     <RootNamespace>CommandHub</RootNamespace>
     <Product>Command hub</Product>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <ApplicationIcon>Assets\commandhub.ico</ApplicationIcon>
   </PropertyGroup>
