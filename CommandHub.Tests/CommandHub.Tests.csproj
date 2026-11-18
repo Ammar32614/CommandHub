@@ -22,6 +22,7 @@
     <ProjectReference Include="..\AddOnProjects\Flashcards\CommandHub.AddOn.Flashcards.csproj" />
     <ProjectReference Include="..\AddOnProjects\Books\CommandHub.AddOn.Books.csproj" />
     <ProjectReference Include="..\AddOnProjects\Backlog\CommandHub.AddOn.Backlog.csproj" />
+    <ProjectReference Include="..\AddOnProjects\PhoneDrop\CommandHub.AddOn.PhoneDrop.csproj" />
   </ItemGroup>
 
 </Project>

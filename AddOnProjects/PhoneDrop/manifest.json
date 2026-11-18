@@ -1,0 +1,11 @@
+{
+  "id": "phonedrop",
+  "name": "Phone drop",
+  "version": "1.0.0",
+  "api": 1,
+  "minHost": "1.3.0",
+  "entry": "phonedrop.dll",
+  "icon": "\uE8EA",
+  "blurb": "Send photos, videos and files between your phone and this PC over Wi-Fi.",
+  "description": "Scan a QR code once and your phone browser can send files straight into a folder on this PC, or download files you drop here. Works on Android and iPhone with no app, over your own Wi-Fi: nothing goes through the internet."
+}

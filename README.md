@@ -136,6 +136,16 @@ Find books on Open Library (or add one by hand), then **Reading**, **Want to rea
 
 Learn vocabulary with spaced repetition, like Anki: cards come back just before you'd forget them. Study with **Space** to show the answer and **1–4** for Again, Hard, Good or Easy (each shows when you'll see the card next). Add cards one at a time, or paste a list (one per line: `front ; back ; reading ; example`, or tab-separated from a spreadsheet). Starts with a Hiragana deck; 10 new cards a day per deck, plus a daily streak.
 
+### Phone drop
+
+Send photos, videos and files between your phone and this PC over your own Wi-Fi. Nothing goes through the internet, and there's no app to install on the phone.
+
+- Click **Turn on** (Windows asks once whether Command hub may use your network: allow private networks). It then switches itself on whenever Command hub runs.
+- On your phone, **scan the QR code** with the camera, or open the address shown in any browser and type the **6-digit code**. Add the page to your home screen to keep it one tap away. Works on Android and iPhone.
+- **Send photos & files** on the phone: they stream straight into a folder on the PC (`Downloads\Phone drop` unless you change it), with progress and speed. Big videos are fine. A file never overwrites one that's there; it becomes `name (2)`.
+- **To your phone**: drop files anywhere on the Phone drop page in Command hub (or **Choose files**); they show on the phone's page to download.
+- Only devices on your own network can connect, and only with the pairing key from the QR code or PIN. **New pairing code** makes every paired phone pair again. The phone and PC must be on the same Wi-Fi (or on Tailscale, for use away from home).
+
 ### Publishing add-ons
 
 Each add-on is a project in `AddOnProjects/` with a `manifest.json` (id, name, version, the contract `api` version, the oldest Command hub it needs). To publish, bump the add-on's version in its manifest and push a tag like `addons-v2`; the **Add-ons** workflow builds every add-on, writes `catalog.json` and uploads them to the `addons` release. To test locally, run `AddOnProjects/pack.ps1 -Out somefolder` and start Command hub with `COMMANDHUB_ADDON_SOURCE` set to that folder.
