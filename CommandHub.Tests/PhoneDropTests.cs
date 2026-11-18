@@ -81,6 +81,29 @@ public class DropLogicTests : IDisposable
         Assert.StartsWith(expectedStart, DropLogic.SafeName(input));
 
     [Fact]
+    public void SafeName_CapsLength_AndDropsHugeExtensions()
+    {
+        var longStem = DropLogic.SafeName(new string('x', 300) + ".jpg");
+        Assert.True(longStem.Length <= 150);
+        Assert.EndsWith(".jpg", longStem);
+        var allExt = DropLogic.SafeName("a." + new string('b', 300));
+        Assert.True(allExt.Length <= 150);
+        Assert.Equal("Invoicefdp.exe", DropLogic.SafeName("Invoice‮fdp.exe"));
+    }
+
+    [Theory]
+    [InlineData("192.168.1.5:48123", true)]
+    [InlineData("localhost:48123", true)]
+    [InlineData("127.0.0.1:48123", true)]
+    [InlineData("192.168.1.5:48124", false)]   // wrong port
+    [InlineData("192.168.1.9:48123", false)]   // not one of ours
+    [InlineData("evil.example:48123", false)]  // DNS rebinding
+    [InlineData("192.168.1.5", false)]         // no port
+    [InlineData(null, false)]
+    public void HostIsUs_OnlyOurOwnAddresses(string? host, bool ok) =>
+        Assert.Equal(ok, DropLogic.HostIsUs(host, 48123, [System.Net.IPAddress.Parse("192.168.1.5")]));
+
+    [Fact]
     public void UniquePath_NeverOverwrites()
     {
         File.WriteAllText(Path.Combine(_dir, "photo.jpg"), "x");
@@ -142,6 +165,7 @@ public class DropServerTests : IDisposable
         _svc.Settings.Folder = Path.Combine(_root, "inbox");
         _svc.Settings.Port = 48500 + Random.Shared.Next(400);
         Assert.True(_svc.Start());
+        _http.DefaultRequestHeaders.Add("X-Phone-Drop", "1"); // what the phone page sends
     }
 
     public void Dispose()
@@ -207,5 +231,42 @@ public class DropServerTests : IDisposable
         _svc.NewPairing();
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, (await _http.GetAsync($"{Base}/api/state?k={old}")).StatusCode);
         Assert.True((await _http.GetAsync($"{Base}/api/state?k={_svc.Settings.Key}")).IsSuccessStatusCode);
+    }
+
+    [Fact]
+    public async Task Protections_RebindingHeaderlessPairingAndCleanRefusals()
+    {
+        // A website pointing its own name at this PC (DNS rebinding) is refused.
+        var rebind = new HttpRequestMessage(HttpMethod.Get, Base + "/");
+        rebind.Headers.Host = $"evil.example:{_svc.Port}";
+        Assert.Equal((System.Net.HttpStatusCode)421, (await _http.SendAsync(rebind)).StatusCode);
+
+        // Pairing without the page's header (a form posted from another site) is refused outright.
+        using var plain = new HttpClient();
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await plain.PostAsync(Base + "/api/pair", new StringContent("pin=" + _svc.Pin))).StatusCode);
+
+        // An unpaired upload of a big file gets a proper 401 answer, not a dropped connection.
+        var big = await _http.PostAsync(Base + "/api/upload?name=x.bin", new ByteArrayContent(new byte[8 * 1024 * 1024]));
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, big.StatusCode);
+    }
+
+    [Fact]
+    public async Task Received_AreMarkedAndUndisguised_AndCookieDownloads()
+    {
+        var key = _svc.Settings.Key;
+        var up = new HttpRequestMessage(HttpMethod.Post, $"{Base}/api/upload?name={Uri.EscapeDataString("Invoice\u202Efdp.exe")}") { Content = new StringContent("MZ") };
+        up.Headers.Add("X-Key", key);
+        Assert.True((await _http.SendAsync(up)).IsSuccessStatusCode);
+        var saved = Assert.Single(Directory.GetFiles(_svc.Settings.Folder));
+        Assert.Equal("Invoicefdp.exe", Path.GetFileName(saved)); // the right-to-left trick is gone
+        Assert.Contains("ZoneId=3", File.ReadAllText(saved + ":Zone.Identifier")); // Windows will warn before running it
+
+        var shared = Path.Combine(_root, "a.txt");
+        File.WriteAllText(shared, "hello");
+        _svc.AddOutgoing([shared]);
+        var id = _svc.Snapshot().Outgoing[0].Id;
+        var dl = new HttpRequestMessage(HttpMethod.Get, $"{Base}/api/file/{id}");
+        dl.Headers.Add("Cookie", "pd=" + key);
+        Assert.Equal("hello", await (await _http.SendAsync(dl)).Content.ReadAsStringAsync());
     }
 }

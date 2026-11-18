@@ -48,22 +48,54 @@ public static class DropLogic
     {
         // Only the last part of any path the phone sends (Path.GetFileName would treat "a:" as a drive).
         var n = (name ?? "").Replace('\\', '/').Split('/').Last().Trim().TrimEnd('.', ' ');
-        n = new string(n.Select(c => Path.GetInvalidFileNameChars().Contains(c) || c < 32 ? '_' : c).ToArray());
+        // Invisible formatting characters (like right-to-left override) can disguise "fdp.exe" as "exe.pdf": drop them.
+        n = new string(n.Where(c => char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format).ToArray());
+        n = new string(n.Select(c => Path.GetInvalidFileNameChars().Contains(c) || c < 32 ? '_' : c).ToArray()).Trim().TrimEnd('.', ' ');
         if (n.Length == 0 || n.All(c => c == '.' || c == '_')) n = $"file-{DateTime.Now:yyyyMMdd-HHmmss}";
         var stem = Path.GetFileNameWithoutExtension(n);
         if (Reserved.Contains(stem)) n = "_" + n;
-        if (n.Length > 150) n = Path.GetFileNameWithoutExtension(n)[..Math.Max(1, 150 - Path.GetExtension(n).Length)] + Path.GetExtension(n);
+        if (n.Length > 150)
+        {
+            var ext = Path.GetExtension(n);
+            if (ext.Length > 20) ext = ""; // a "name" that's all extension: just cut it
+            n = n[..(150 - ext.Length)].TrimEnd('.', ' ') + ext;
+        }
         return n;
     }
 
-    /// <summary>"photo.jpg", then "photo (2).jpg"… so nothing already there is overwritten.</summary>
-    public static string UniquePath(string folder, string safeName)
+    /// <summary>
+    /// "photo.jpg", then "photo (2).jpg"… so nothing already there is overwritten. <paramref name="taken"/> says which
+    /// paths other uploads in progress have claimed.
+    /// </summary>
+    public static string UniquePath(string folder, string safeName, Func<string, bool>? taken = null)
     {
+        taken ??= _ => false;
         var path = Path.Combine(folder, safeName);
         var stem = Path.GetFileNameWithoutExtension(safeName);
         var ext = Path.GetExtension(safeName);
-        for (int i = 2; File.Exists(path) || File.Exists(path + ".part"); i++) path = Path.Combine(folder, $"{stem} ({i}){ext}");
+        for (int i = 2; File.Exists(path) || File.Exists(path + ".part") || taken(path) || taken(path + ".part"); i++)
+            path = Path.Combine(folder, $"{stem} ({i}){ext}");
         return path;
+    }
+
+    /// <summary>
+    /// A request must be addressed to this PC by one of its own addresses (or localhost) on our port. That stops
+    /// "DNS rebinding", where a website you visit points its own name at this PC to reach it through your browser.
+    /// </summary>
+    public static bool HostIsUs(string? host, int port, IEnumerable<IPAddress> ours)
+    {
+        if (string.IsNullOrWhiteSpace(host)) return false;
+        var h = host.Trim().ToLowerInvariant();
+        string name = h;
+        int colon = h.LastIndexOf(':');
+        if (colon > 0 && !h.EndsWith(']'))
+        {
+            if (!int.TryParse(h[(colon + 1)..], out var p) || p != port) return false;
+            name = h[..colon];
+        }
+        else return false; // browsers always send the port for a non-default one
+        if (name is "localhost" or "127.0.0.1") return true;
+        return IPAddress.TryParse(name, out var ip) && ours.Any(o => o.Equals(ip));
     }
 
     /// <summary>Parses "GET /path?a=1&amp;b=2 HTTP/1.1" and the header lines. Null if it isn't a request.</summary>

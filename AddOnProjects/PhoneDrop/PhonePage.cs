@@ -77,6 +77,11 @@ const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 let key = params.get('k') || localStorage.getItem('pd-key');
 if (params.get('k')) { localStorage.setItem('pd-key', key); history.replaceState(null, '', '/'); }
+// The key goes in a header (and a same-site cookie for downloads), never in addresses the phone keeps.
+function remember(k) { key = k; localStorage.setItem('pd-key', k); document.cookie = 'pd=' + k + '; path=/; max-age=31536000; SameSite=Strict'; }
+function forget() { key = null; localStorage.removeItem('pd-key'); document.cookie = 'pd=; path=/; max-age=0'; }
+if (key) remember(key);
+const H = () => ({ 'X-Key': key, 'X-Phone-Drop': '1' });
 
 function size(b) { return b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : b < 1073741824 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1073741824).toFixed(2) + ' GB'; }
 function esc(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -88,20 +93,21 @@ $('pin').addEventListener('input', async () => {
   const pin = $('pin').value.replace(/\D/g, '');
   $('pin').value = pin; $('pinerr').textContent = '';
   if (pin.length !== 6) return;
-  const r = await fetch('/api/pair', { method: 'POST', body: 'pin=' + pin });
-  if (r.ok) { key = (await r.json()).key; localStorage.setItem('pd-key', key); showMain(); }
+  const r = await fetch('/api/pair', { method: 'POST', body: 'pin=' + pin, headers: { 'X-Phone-Drop': '1' } });
+  if (r.ok) { remember((await r.json()).key); showMain(); }
+  else if (r.status === 423) { $('pinerr').textContent = 'Typing a code is paused after too many wrong tries. Scan the QR code, or press New pairing code on the PC.'; $('pin').value = ''; }
   else { $('pinerr').textContent = 'That code didn\'t match. Check the one on the PC.'; $('pin').value = ''; }
 });
 
 async function refresh() {
   if (!key) return showPair();
   try {
-    const r = await fetch('/api/state?k=' + encodeURIComponent(key), { cache: 'no-store' });
-    if (r.status === 401) { localStorage.removeItem('pd-key'); key = null; return showPair(); }
+    const r = await fetch('/api/state', { cache: 'no-store', headers: H() });
+    if (r.status === 401) { forget(); return showPair(); }
     const s = await r.json();
     $('incoming').innerHTML = s.files.length === 0
       ? '<div class="hint">Nothing yet. Drag files onto Phone drop on the PC and they\'ll appear here.</div>'
-      : s.files.map(f => `<a class="dl" href="/api/file/${f.id}?k=${encodeURIComponent(key)}" download="${esc(f.name)}"><span class="name">${esc(f.name)}<br><small style="color:var(--muted)">${size(f.size)}</small></span><span class="go">Download</span></a>`).join('');
+      : s.files.map(f => `<a class="dl" href="/api/file/${f.id}" download="${esc(f.name)}"><span class="name">${esc(f.name)}<br><small style="color:var(--muted)">${size(f.size)}</small></span><span class="go">Download</span></a>`).join('');
   } catch { /* PC asleep or off the Wi-Fi: try again shortly */ }
 }
 
@@ -134,7 +140,8 @@ function send({ file, row }) {
     const xhr = new XMLHttpRequest();
     const bar = row.querySelector('.bar > i'), st = row.querySelector('.st');
     const started = Date.now();
-    xhr.open('POST', '/api/upload?k=' + encodeURIComponent(key) + '&name=' + encodeURIComponent(file.name));
+    xhr.open('POST', '/api/upload?name=' + encodeURIComponent(file.name));
+    for (const [h, v] of Object.entries(H())) xhr.setRequestHeader(h, v);
     xhr.upload.onprogress = e => {
       if (!e.lengthComputable) return;
       const pct = e.loaded / e.total * 100, secs = (Date.now() - started) / 1000;

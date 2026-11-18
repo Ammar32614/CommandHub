@@ -68,7 +68,13 @@ public sealed class PhoneDropPage : UserControl
             if (e.Data.GetData(DataFormats.FileDrop) is string[] paths) _svc.AddOutgoing(ExpandFolders(paths));
         };
         // Progress arrives on the server's threads: redraw at most a few times a second.
-        _timer.Tick += (_, _) => { if (_dirty) { _dirty = false; Render(); } };
+        _timer.Tick += (_, _) =>
+        {
+            if (!_dirty) return;
+            _dirty = false;
+            // Only progress moved: update the bars in place, so buttons stay put and clickable during a transfer.
+            if (Shape() == _shape) UpdateProgress(); else Render();
+        };
         Loaded += (_, _) => { App.ThemeChanged += OnTheme; _svc.Changed += OnChanged; _timer.Start(); Backdrop.Paint(_base, _glow); Render(); };
         Unloaded += (_, _) => { App.ThemeChanged -= OnTheme; _svc.Changed -= OnChanged; _timer.Stop(); };
         Backdrop.Paint(_base, _glow);
@@ -88,11 +94,48 @@ public sealed class PhoneDropPage : UserControl
         }
     }
 
+    private string _shape = "";
+    private readonly Dictionary<Transfer, (TextBlock Text, Grid Bar)> _progress = [];
+    private List<(string Name, System.Net.IPAddress Address)> _addresses = [];
+    private DateTime _addressesAt;
+    private BitmapSource? _qr;
+    private string _qrUrl = "";
+
+    /// <summary>What the page shows apart from progress; a change means a full redraw.</summary>
+    private string Shape()
+    {
+        var (outgoing, incoming, history) = _svc.Snapshot();
+        return string.Join("|", _svc.Running, _svc.PinLocked, _svc.Pin, _svc.Settings.Key, _svc.Settings.Folder, _svc.Error,
+            string.Join(",", incoming.Select(t => t.GetHashCode())), history.Count, history.FirstOrDefault()?.Path, string.Join(",", outgoing.Select(o => o.Id)));
+    }
+
+    private void UpdateProgress()
+    {
+        foreach (var (t, (text, bar)) in _progress)
+        {
+            var done = Interlocked.Read(ref t.Done);
+            text.Text = ProgressText(t, done);
+            double f = t.Size > 0 ? Math.Clamp((double)done / t.Size, 0, 1) : 0;
+            bar.ColumnDefinitions[0].Width = new GridLength(Math.Max(0.0001, f), GridUnitType.Star);
+            bar.ColumnDefinitions[1].Width = new GridLength(Math.Max(0.0001, 1 - f), GridUnitType.Star);
+        }
+    }
+
+    private static string ProgressText(Transfer t, long done)
+    {
+        var secs = (DateTime.UtcNow - t.Started).TotalSeconds;
+        return t.Size > 0 ? $"{100.0 * done / t.Size:0}%  ·  {DropLogic.Size(done)} of {DropLogic.Size(t.Size)}" + (secs > 1 ? $"  ·  {DropLogic.Size((long)(done / secs))}/s" : "") : "";
+    }
+
     private void Render()
     {
+        _shape = Shape();
+        _progress.Clear();
         _content.Children.Clear();
         var (outgoing, incoming, history) = _svc.Snapshot();
-        var addresses = DropLogic.Addresses();
+        // Looking up network adapters is slow-ish: once every 15 seconds is plenty.
+        if (DateTime.UtcNow - _addressesAt > TimeSpan.FromSeconds(15)) { _addresses = DropLogic.Addresses(); _addressesAt = DateTime.UtcNow; }
+        var addresses = _addresses;
 
         var top = new DockPanel { Height = 40 };
         var crumb = T($"PHONE DROP   /   {DateTime.Now.ToString("dddd, MMMM d").ToUpperInvariant()}", 11, "Muted");
@@ -155,7 +198,8 @@ public sealed class PhoneDropPage : UserControl
         var ip = addresses[0].Address;
         var url = $"http://{ip}:{_svc.Port}/?k={_svc.Settings.Key}";
         s.Children.Add(Gap(T("Scan with your phone's camera, then add the page to your home screen.", 12, "Muted", wrap: true), 6, 12));
-        var qr = new Image { Source = QrImage(url), Width = 230, Height = 230, HorizontalAlignment = HorizontalAlignment.Left, SnapsToDevicePixels = true };
+        if (_qrUrl != url) { _qr = QrImage(url); _qrUrl = url; }
+        var qr = new Image { Source = _qr, Width = 230, Height = 230, HorizontalAlignment = HorizontalAlignment.Left, SnapsToDevicePixels = true };
         RenderOptions.SetBitmapScalingMode(qr, BitmapScalingMode.NearestNeighbor);
         var frame = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), Padding = new Thickness(8), Child = qr, HorizontalAlignment = HorizontalAlignment.Left };
         s.Children.Add(frame);
@@ -165,7 +209,9 @@ public sealed class PhoneDropPage : UserControl
         addr.TextTrimming = TextTrimming.None;
         s.Children.Add(addr);
         s.Children.Add(Gap(T("and type this code", 12, "Muted"), 6, 2));
-        var pin = T(string.Join(" ", _svc.Pin.ToCharArray()), 28, "AccentBrush", FontWeights.SemiBold);
+        var pin = _svc.PinLocked
+            ? T("Paused after too many wrong tries. Scan the QR code, or press New pairing code.", 12, "Danger", wrap: true)
+            : T(string.Join(" ", _svc.Pin.ToCharArray()), 28, "AccentBrush", FontWeights.SemiBold);
         pin.TextTrimming = TextTrimming.None;
         s.Children.Add(pin);
         if (addresses.Count > 1)
@@ -219,15 +265,16 @@ public sealed class PhoneDropPage : UserControl
         foreach (var t in incoming)
         {
             var done = Interlocked.Read(ref t.Done);
-            var secs = (DateTime.UtcNow - t.Started).TotalSeconds;
             var row = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
             var line = new DockPanel();
-            var pct = T(t.Size > 0 ? $"{100.0 * done / t.Size:0}%  ·  {DropLogic.Size(done)} of {DropLogic.Size(t.Size)}" + (secs > 1 ? $"  ·  {DropLogic.Size((long)(done / secs))}/s" : "") : "", 11, "Muted");
+            var pct = T(ProgressText(t, done), 11, "Muted");
             DockPanel.SetDock(pct, Dock.Right);
             line.Children.Add(pct);
             line.Children.Add(T(t.Name, 13, "Text", FontWeights.SemiBold));
             row.Children.Add(line);
-            row.Children.Add(Gap(Bar(t.Size > 0 ? (double)done / t.Size : 0), 6, 0));
+            var bar = Bar(t.Size > 0 ? (double)done / t.Size : 0);
+            row.Children.Add(Gap(bar, 6, 0));
+            _progress[t] = (pct, bar);
             s.Children.Add(row);
         }
         if (history.Count == 0 && incoming.Count == 0)
